@@ -1,0 +1,118 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tailwind v4 only (kalau kamu pakai v4, boleh aktifkan):
+@custom-variant dark (&:where(.dark, .dark *));
+*/
+
+/* ===== EGATOR-LIKE THEME (match screenshot) ===== */
+:root {
+  --bg: #F6F5F8;           /* background */
+  --surface: #FFFFFF;      /* card */
+  --surface-2: #F1F3F7;    /* soft panel */
+  --border: #E5E7EF;
+  --text: #3B3B40;
+  --muted: #7C7E8A;
+
+  --primary: #767FDB;      /* purple */
+  --primary-hover: #6B73D2;
+  --primary-soft: rgba(118, 127, 219, 0.14);
+
+  --accent: #22C55E;
+  --info: #38BDF8;
+  --warning: #FBBF24;
+  --danger: #F87171;
+
+  --shadow: 0 22px 55px rgba(24, 26, 30, 0.10);
+  --ring-track: rgba(59, 59, 64, 0.12);
+}
+
+.dark {
+  --bg: #181A1E;
+  --surface: #202528;
+  --surface-2: #242A30;
+  --border: #2D343D;
+  --text: #EBEFF5;
+  --muted: #A3A8B4;
+
+  --primary: #767FDB;
+  --primary-hover: #6B73D2;
+  --primary-soft: rgba(118, 127, 219, 0.18);
+
+  --accent: #22C55E;
+  --info: #38BDF8;
+  --warning: #FBBF24;
+  --danger: #F87171;
+
+  --shadow: 0 26px 70px rgba(0, 0, 0, 0.45);
+  --ring-track: rgba(235, 239, 245, 0.10);
+}
+
+/* Poppins */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+/* base */
+html, body { height: 100%; }
+body {
+  font-family: Poppins, ui-sans-serif, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+[x-cloak] { display: none !important; }
+
+/* .auth-page input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]) {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+  box-shadow: none;
+} */
+
+.auth-page input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+.auth-page input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"])::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.auth-page input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):-webkit-autofill,
+.auth-page input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):-webkit-autofill:hover,
+.auth-page input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):-webkit-autofill:focus {
+  border: 0;
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  box-shadow: 0 0 0 1000px var(--surface-2) inset;
+}
+
+@layer utilities {
+  .bg-app { background-color: var(--bg); }
+  .bg-surface { background-color: var(--surface); }
+  .bg-surface2 { background-color: var(--surface-2); }
+
+  .text-app { color: var(--text); }
+  .text-muted { color: var(--muted); }
+  .text-primary { color: var(--primary); }
+
+  .border-app { border-color: var(--border); }
+
+  .bg-primary { background-color: var(--primary); }
+  .hover\:bg-primary-hover:hover { background-color: var(--primary-hover); }
+  .bg-primary-soft { background-color: var(--primary-soft); }
+
+  .shadow-soft { box-shadow: var(--shadow); }
+
+  .ring-app { --tw-ring-color: var(--border); }
+}
