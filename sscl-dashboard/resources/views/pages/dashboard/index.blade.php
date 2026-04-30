@@ -7,7 +7,7 @@
       ['label' => 'Total Data Trafik', 'value' => '125.430', 'icon' => 'lucide-server', 'tone' => 'primary'],
       ['label' => 'Normal', 'value' => '98.765', 'icon' => 'lucide-shield-check', 'tone' => 'accent'],
       ['label' => 'Malware', 'value' => '26.665', 'icon' => 'lucide-bug', 'tone' => 'danger'],
-      ['label' => 'Persentase Malware', 'value' => '21,25%', 'icon' => 'lucide-chart-pie', 'tone' => 'warning'],
+      ['label' => 'Waktu Penarikan Terakhir', 'value' => '20 Mei 2025 10:15', 'icon' => 'lucide-clock', 'tone' => 'warning'],
     ];
 
     $detections = [
@@ -55,7 +55,7 @@
     </div>
 
     {{-- Security Status --}}
-    <div class="grid gap-6 lg:grid-cols-12">
+    {{-- <div class="grid gap-6 lg:grid-cols-12">
       <div class="lg:col-span-4 rounded-3xl bg-surface shadow-soft p-5">
         <div class="flex items-center gap-3">
           <div class="h-11 w-11 rounded-2xl bg-[rgba(251,191,36,0.18)] grid place-items-center">
@@ -67,7 +67,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </div> --}}
 
     {{-- Analytics --}}
     <div class="grid gap-6 lg:grid-cols-12">
@@ -101,7 +101,7 @@
         </div>
       </div>
 
-      <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-5">
+      <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-9">
         <div class="flex items-center justify-between gap-3">
           <div class="text-sm font-semibold">Jumlah Deteksi</div>
           <div class="text-xs text-muted">14-20 Mei 2025</div>
@@ -123,39 +123,40 @@
         </div>
       </div>
 
-      <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-4">
-        <div class="text-sm font-semibold">Deteksi Terbaru</div>
+    </div>
 
-        <div class="mt-5 overflow-x-auto rounded-2xl border border-app">
-          <table class="w-full text-xs">
-            <thead class="bg-surface2 text-muted">
-              <tr class="border-b border-app">
-                <th class="px-3 py-3 text-left font-medium">Waktu</th>
-                <th class="px-3 py-3 text-left font-medium">Sumber</th>
-                <th class="px-3 py-3 text-left font-medium">Hasil</th>
+    <div class="rounded-3xl bg-surface shadow-soft p-6">
+      <div class="text-sm font-semibold">Deteksi Terbaru</div>
+
+      <div class="mt-5 overflow-x-auto rounded-2xl border border-app">
+        <table class="w-full text-sm">
+          <thead class="bg-surface2 text-muted">
+            <tr class="border-b border-app">
+              <th class="px-4 py-3 text-left font-medium">Waktu</th>
+              <th class="px-4 py-3 text-left font-medium">Sumber</th>
+              <th class="px-4 py-3 text-left font-medium">Hasil</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-app">
+            @foreach ($latestDetections as $item)
+              <tr class="hover:bg-surface2/50">
+                <td class="px-4 py-3 text-muted whitespace-nowrap">{{ $item['time'] }}</td>
+                <td class="px-4 py-3 text-muted whitespace-nowrap">{{ $item['source'] }}</td>
+                <td class="px-4 py-3">
+                  <span
+                    @class([
+                      'px-3 py-1 rounded-full text-xs font-semibold',
+                      'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $item['tone'] === 'danger',
+                      'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $item['tone'] === 'accent',
+                    ])
+                  >
+                    {{ $item['result'] }}
+                  </span>
+                </td>
               </tr>
-            </thead>
-            <tbody class="divide-y divide-app">
-              @foreach ($latestDetections as $item)
-                <tr class="hover:bg-surface2/50">
-                  <td class="px-3 py-3 text-muted whitespace-nowrap">{{ $item['time'] }}</td>
-                  <td class="px-3 py-3 text-muted whitespace-nowrap">{{ $item['source'] }}</td>
-                  <td class="px-3 py-3">
-                    <span
-                      @class([
-                        'px-2.5 py-1 rounded-full text-[11px] font-semibold',
-                        'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $item['tone'] === 'danger',
-                        'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $item['tone'] === 'accent',
-                      ])
-                    >
-                      {{ $item['result'] }}
-                    </span>
-                  </td>
-                </tr>
-              @endforeach
-            </tbody>
-          </table>
-        </div>
+            @endforeach
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
