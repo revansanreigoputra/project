@@ -1,11 +1,10 @@
 @php
   $map = [
     'dashboard' => 'Dashboard',
-    'scan.index' => 'Scan / Prediction',
-    'logs.index' => 'Traffic Logs',
-    'model.index' => 'Model (SimCLR)',
-    'datasets.index' => 'Datasets',
-    'settings.index' => 'Settings',
+    'scan.index' => 'Upload Data',
+    'hasildeteksi.index' => 'Hasil Deteksi',
+    'riwayat.index' => 'Riwayat',
+    'laporan.index' => 'Laporan',
   ];
   $title = $map[Route::currentRouteName()] ?? 'Dashboard';
 @endphp

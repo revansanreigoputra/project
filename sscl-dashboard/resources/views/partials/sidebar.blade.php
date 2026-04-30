@@ -1,11 +1,10 @@
 @php
   $items = [
-    ['route' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'shield-check'],
-    ['route' => 'scan.index', 'label' => 'Scan / Prediction', 'icon' => 'scan-search'],
-    // ['route' => 'logs.index', 'label' => 'Traffic Logs', 'icon' => 'list-checks'],
-    // ['route' => 'model.index', 'label' => 'Model (SimCLR)', 'icon' => 'brain-circuit'],
-    // ['route' => 'datasets.index', 'label' => 'Datasets', 'icon' => 'database'],
-    // ['route' => 'settings.index', 'label' => 'Settings', 'icon' => 'settings'],
+    ['href' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'label' => 'Dashboard', 'icon' => 'layout-dashboard'],
+    ['href' => route('scan.index'), 'active' => request()->routeIs('scan.index'), 'label' => 'Upload Data', 'icon' => 'cloud-upload'],
+    ['href' => route('hasildeteksi.index'), 'active' => request()->routeIs('hasildeteksi.index'), 'label' => 'Hasil Deteksi', 'icon' => 'list-checks'],
+    ['href' => route('riwayat.index'), 'active' => request()->routeIs('riwayat.index'), 'label' => 'Riwayat', 'icon' => 'clock'],
+    ['href' => route('laporan.index'), 'active' => request()->routeIs('laporan.index'), 'label' => 'Laporan', 'icon' => 'file-text'],
   ];
 @endphp
 
@@ -27,8 +26,8 @@
     <nav class="mt-2 flex flex-col gap-1 px-3">
       @foreach ($items as $it)
         <x-sidebar-link
-          :href="route($it['route'])"
-          :active="request()->routeIs($it['route'])"
+          href="{{ $it['href'] }}"
+          :active="$it['active']"
         >
           @php($icon = 'lucide-' . $it['icon'])
           <x-dynamic-component :component="$icon" class="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
@@ -93,8 +92,8 @@
     <nav class="mt-2 flex flex-col gap-1 px-3">
       @foreach ($items as $it)
         <x-sidebar-link
-          :href="route($it['route'])"
-          :active="request()->routeIs($it['route'])"
+          href="{{ $it['href'] }}"
+          :active="$it['active']"
           @click="mobileOpen=false"
         >
           @php($icon = 'lucide-' . $it['icon'])

@@ -2,197 +2,159 @@
 @section('title', 'Dashboard')
 
 @section('page')
-  <div class="grid gap-6 lg:grid-cols-12">
-    {{-- LEFT --}}
-    <div class="lg:col-span-8 space-y-6">
-      {{-- Stat cards --}}
-      <div class="grid gap-6 md:grid-cols-3">
-        <div class="rounded-3xl bg-surface shadow-soft p-6 flex items-center justify-between">
-          <div class="space-y-2">
-            <div class="h-12 w-12 rounded-2xl grid place-items-center bg-primary-soft">
-              <x-lucide-activity class="h-6 w-6 text-primary" />
-            </div>
-            <div class="text-sm font-semibold">Total Traffic</div>
-            <div class="text-4xl font-semibold">18,420</div>
-            <div class="text-sm text-muted">Last 24 Hours</div>
+  @php
+    $statCards = [
+      ['label' => 'Total Data Trafik', 'value' => '125.430', 'icon' => 'lucide-server', 'tone' => 'primary'],
+      ['label' => 'Normal', 'value' => '98.765', 'icon' => 'lucide-shield-check', 'tone' => 'accent'],
+      ['label' => 'Malware', 'value' => '26.665', 'icon' => 'lucide-bug', 'tone' => 'danger'],
+      ['label' => 'Persentase Malware', 'value' => '21,25%', 'icon' => 'lucide-chart-pie', 'tone' => 'warning'],
+    ];
+
+    $detections = [
+      ['date' => '14 Mei', 'value' => '6.5K', 'height' => 34],
+      ['date' => '15 Mei', 'value' => '12.8K', 'height' => 64],
+      ['date' => '16 Mei', 'value' => '16.4K', 'height' => 82],
+      ['date' => '17 Mei', 'value' => '10.1K', 'height' => 51],
+      ['date' => '18 Mei', 'value' => '17.2K', 'height' => 86],
+      ['date' => '19 Mei', 'value' => '13.5K', 'height' => 68],
+      ['date' => '20 Mei', 'value' => '11.4K', 'height' => 57],
+    ];
+
+    $latestDetections = [
+      ['time' => '20 Mei 2025 10:15:32', 'source' => '192.168.1.10', 'result' => 'Malware', 'tone' => 'danger'],
+      ['time' => '20 Mei 2025 10:14:33', 'source' => '10.0.0.5', 'result' => 'Normal', 'tone' => 'accent'],
+      ['time' => '20 Mei 2025 10:12:45', 'source' => '172.16.5.23', 'result' => 'Malware', 'tone' => 'danger'],
+      ['time' => '20 Mei 2025 10:11:02', 'source' => '192.168.1.25', 'result' => 'Normal', 'tone' => 'accent'],
+      ['time' => '20 Mei 2025 10:09:33', 'source' => '10.0.0.12', 'result' => 'Malware', 'tone' => 'danger'],
+    ];
+  @endphp
+
+  <div class="space-y-6">
+    {{-- Summary Cards --}}
+    <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+      @foreach ($statCards as $card)
+        <div class="rounded-3xl bg-surface shadow-soft p-6 flex items-center gap-4">
+          <div
+            @class([
+              'h-14 w-14 shrink-0 rounded-2xl grid place-items-center',
+              'bg-primary-soft text-primary' => $card['tone'] === 'primary',
+              'bg-[rgba(34,197,94,0.15)] text-[color:var(--accent)]' => $card['tone'] === 'accent',
+              'bg-[rgba(248,113,113,0.15)] text-[color:var(--danger)]' => $card['tone'] === 'danger',
+              'bg-[rgba(251,191,36,0.18)] text-[color:var(--warning)]' => $card['tone'] === 'warning',
+            ])
+          >
+            <x-dynamic-component :component="$card['icon']" class="h-7 w-7" />
           </div>
-          <x-progress-ring value="81" />
-        </div>
 
-        <div class="rounded-3xl bg-surface shadow-soft p-6 flex items-center justify-between">
-          <div class="space-y-2">
-            <div class="h-12 w-12 rounded-2xl grid place-items-center bg-[rgba(248,113,113,0.15)]">
-              <x-lucide-shield-alert class="h-6 w-6 text-[color:var(--danger)]" />
-            </div>
-            <div class="text-sm font-semibold">Suspicious Alerts</div>
-            <div class="text-4xl font-semibold">214</div>
-            <div class="text-sm text-muted">Last 24 Hours</div>
+          <div class="min-w-0">
+            <div class="text-xs font-semibold text-muted">{{ $card['label'] }}</div>
+            <div class="mt-1 text-2xl font-semibold leading-tight">{{ $card['value'] }}</div>
           </div>
-          <x-progress-ring value="62" />
         </div>
+      @endforeach
+    </div>
 
-        <div class="rounded-3xl bg-surface shadow-soft p-6 flex items-center justify-between">
-          <div class="space-y-2">
-            <div class="h-12 w-12 rounded-2xl grid place-items-center bg-[rgba(34,197,94,0.15)]">
-              <x-lucide-bug class="h-6 w-6 text-[color:var(--accent)]" />
-            </div>
-            <div class="text-sm font-semibold">Detected Malware</div>
-            <div class="text-4xl font-semibold">37</div>
-            <div class="text-sm text-muted">Last 24 Hours</div>
+    {{-- Security Status --}}
+    <div class="grid gap-6 lg:grid-cols-12">
+      <div class="lg:col-span-4 rounded-3xl bg-surface shadow-soft p-5">
+        <div class="flex items-center gap-3">
+          <div class="h-11 w-11 rounded-2xl bg-[rgba(251,191,36,0.18)] grid place-items-center">
+            <x-lucide-shield-alert class="h-5 w-5 text-[color:var(--warning)]" />
           </div>
-          <x-progress-ring value="44" />
-        </div>
-      </div>
-
-      {{-- Recent Traffic --}}
-      <div class="rounded-3xl bg-surface shadow-soft p-6">
-        <div class="text-xl font-semibold">Recent Traffic</div>
-
-        <div class="mt-5 overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead class="text-muted">
-              <tr class="border-b border-app">
-                <th class="py-3 text-left font-medium">Flow Name</th>
-                <th class="py-3 text-left font-medium">Flow ID</th>
-                <th class="py-3 text-left font-medium">Protocol</th>
-                <th class="py-3 text-left font-medium">Status</th>
-                <th class="py-3 text-right font-medium"> </th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-[color:var(--border)]">
-              <tr>
-                <td class="py-4">Flow to 8.8.8.8</td>
-                <td class="py-4 text-muted">85631</td>
-                <td class="py-4 text-muted">TCP</td>
-                <td class="py-4">
-                  <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]">
-                    Malware
-                  </span>
-                </td>
-                <td class="py-4 text-right">
-                  <a href="#" class="text-primary hover:underline">Details</a>
-                </td>
-              </tr>
-
-              <tr>
-                <td class="py-4">DNS query 1.1.1.1</td>
-                <td class="py-4 text-muted">36378</td>
-                <td class="py-4 text-muted">UDP</td>
-                <td class="py-4">
-                  <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
-                    Normal
-                  </span>
-                </td>
-                <td class="py-4 text-right">
-                  <a href="#" class="text-primary hover:underline">Details</a>
-                </td>
-              </tr>
-
-              <tr>
-                <td class="py-4">C2-like traffic</td>
-                <td class="py-4 text-muted">49347</td>
-                <td class="py-4 text-muted">TCP</td>
-                <td class="py-4">
-                  <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(251,191,36,0.20)] text-[color:var(--warning)]">
-                    Suspicious
-                  </span>
-                </td>
-                <td class="py-4 text-right">
-                  <a href="#" class="text-primary hover:underline">Details</a>
-                </td>
-              </tr>
-
-              <tr>
-                <td class="py-4">HTTP download</td>
-                <td class="py-4 text-muted">96996</td>
-                <td class="py-4 text-muted">TCP</td>
-                <td class="py-4">
-                  <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
-                    Normal
-                  </span>
-                </td>
-                <td class="py-4 text-right">
-                  <a href="#" class="text-primary hover:underline">Details</a>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div>
+            <div class="text-xs text-muted">Status Keamanan</div>
+            <div class="text-lg font-semibold">Waspada</div>
+          </div>
         </div>
       </div>
     </div>
 
-    {{-- RIGHT --}}
-    <div class="lg:col-span-4 space-y-6">
-      {{-- Recent Updates --}}
-      <div class="rounded-3xl bg-surface shadow-soft p-6">
-        <div class="text-xl font-semibold">Recent Updates</div>
+    {{-- Analytics --}}
+    <div class="grid gap-6 lg:grid-cols-12">
+      <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-3">
+        <div class="text-sm font-semibold">Normal vs Malware</div>
 
-        <div class="mt-5 space-y-5">
-          <div class="flex gap-3">
-            <div class="h-10 w-10 rounded-full bg-surface2 grid place-items-center font-semibold">S</div>
-            <div>
-              <div class="text-sm font-semibold">SOC Agent</div>
-              <div class="text-sm text-muted">Malware classification on outbound flow.</div>
-              <div class="text-xs text-muted mt-1">2 Minutes Ago</div>
-            </div>
+        <div class="mt-6 flex flex-col items-center gap-5">
+          <div
+            class="relative h-44 w-44 rounded-full"
+            style="background: conic-gradient(var(--accent) 0 78.75%, var(--danger) 78.75% 100%);"
+          >
+            <div class="absolute inset-8 rounded-full bg-surface"></div>
           </div>
 
-          <div class="flex gap-3">
-            <div class="h-10 w-10 rounded-full bg-surface2 grid place-items-center font-semibold">S</div>
-            <div>
-              <div class="text-sm font-semibold">Sensor</div>
-              <div class="text-sm text-muted">High anomaly score detected on TCP traffic.</div>
-              <div class="text-xs text-muted mt-1">5 Minutes Ago</div>
+          <div class="w-full space-y-3 text-sm">
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 text-muted">
+                <span class="h-3 w-3 rounded-full bg-[color:var(--accent)]"></span>
+                Normal
+              </div>
+              <div class="font-semibold">78,75%</div>
             </div>
-          </div>
-
-          <div class="flex gap-3">
-            <div class="h-10 w-10 rounded-full bg-surface2 grid place-items-center font-semibold">M</div>
-            <div>
-              <div class="text-sm font-semibold">Model</div>
-              <div class="text-sm text-muted">Encoder loaded: simclr-encoder-v1.</div>
-              <div class="text-xs text-muted mt-1">6 Minutes Ago</div>
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex items-center gap-2 text-muted">
+                <span class="h-3 w-3 rounded-full bg-[color:var(--danger)]"></span>
+                Malware
+              </div>
+              <div class="font-semibold">21,25%</div>
             </div>
           </div>
         </div>
       </div>
 
-      {{-- Detection Analytics --}}
-      <div class="rounded-3xl bg-surface shadow-soft p-6">
-        <div class="text-xl font-semibold">Detection Analytics</div>
+      <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-5">
+        <div class="flex items-center justify-between gap-3">
+          <div class="text-sm font-semibold">Jumlah Deteksi</div>
+          <div class="text-xs text-muted">14-20 Mei 2025</div>
+        </div>
 
-        <div class="mt-5 space-y-4">
-          <div class="flex items-center justify-between rounded-3xl bg-surface2 border border-app p-4">
-            <div class="flex items-center gap-3">
-              <div class="h-12 w-12 rounded-2xl bg-primary-soft grid place-items-center">
-                <x-lucide-radar class="h-6 w-6 text-primary" />
+        <div class="mt-6 flex h-64 items-end gap-3 border-b border-app pb-4">
+          @foreach ($detections as $item)
+            <div class="flex min-w-0 flex-1 flex-col items-center gap-3">
+              <div class="text-xs font-semibold text-muted">{{ $item['value'] }}</div>
+              <div class="w-full max-w-10 rounded-t-2xl bg-primary-soft overflow-hidden">
+                <div
+                  class="w-full rounded-t-2xl bg-primary"
+                  style="height: {{ $item['height'] * 1.8 }}px"
+                ></div>
               </div>
-              <div>
-                <div class="text-sm font-semibold">REALTIME SCANS</div>
-                <div class="text-sm text-muted">Last 24 Hours</div>
-              </div>
+              <div class="text-[11px] text-muted whitespace-nowrap">{{ $item['date'] }}</div>
             </div>
-            <div class="text-right">
-              <div class="text-sm text-muted">+39%</div>
-              <div class="text-xl font-semibold">3849</div>
-            </div>
-          </div>
+          @endforeach
+        </div>
+      </div>
 
-          <div class="flex items-center justify-between rounded-3xl bg-surface2 border border-app p-4">
-            <div class="flex items-center gap-3">
-              <div class="h-12 w-12 rounded-2xl bg-[rgba(248,113,113,0.15)] grid place-items-center">
-                <x-lucide-layers class="h-6 w-6 text-[color:var(--danger)]" />
-              </div>
-              <div>
-                <div class="text-sm font-semibold">BATCH JOBS</div>
-                <div class="text-sm text-muted">Last 24 Hours</div>
-              </div>
-            </div>
-            <div class="text-right">
-              <div class="text-sm text-muted">−17%</div>
-              <div class="text-xl font-semibold">1100</div>
-            </div>
-          </div>
+      <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-4">
+        <div class="text-sm font-semibold">Deteksi Terbaru</div>
+
+        <div class="mt-5 overflow-x-auto rounded-2xl border border-app">
+          <table class="w-full text-xs">
+            <thead class="bg-surface2 text-muted">
+              <tr class="border-b border-app">
+                <th class="px-3 py-3 text-left font-medium">Waktu</th>
+                <th class="px-3 py-3 text-left font-medium">Sumber</th>
+                <th class="px-3 py-3 text-left font-medium">Hasil</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-app">
+              @foreach ($latestDetections as $item)
+                <tr class="hover:bg-surface2/50">
+                  <td class="px-3 py-3 text-muted whitespace-nowrap">{{ $item['time'] }}</td>
+                  <td class="px-3 py-3 text-muted whitespace-nowrap">{{ $item['source'] }}</td>
+                  <td class="px-3 py-3">
+                    <span
+                      @class([
+                        'px-2.5 py-1 rounded-full text-[11px] font-semibold',
+                        'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $item['tone'] === 'danger',
+                        'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $item['tone'] === 'accent',
+                      ])
+                    >
+                      {{ $item['result'] }}
+                    </span>
+                  </td>
+                </tr>
+              @endforeach
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
