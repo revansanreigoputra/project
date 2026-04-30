@@ -18,9 +18,11 @@
                     return;
                 }
 
-                if (!file.name.toLowerCase().endsWith('.csv')) {
+                const valid = file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.xlsx');
+
+                if (!valid) {
                     this.fileName = '';
-                    this.errorMessage = 'File harus berformat CSV';
+                    this.errorMessage = 'File harus berformat CSV atau XLSX';
                     this.$refs.csvFile.value = '';
                     return;
                 }
@@ -56,7 +58,7 @@
                 >
                     <div class="text-center">
                         <x-lucide-cloud-upload class="h-14 w-14 mx-auto text-muted mb-3" />
-                        <div class="text-sm font-semibold">Upload File CSV</div>
+                        <div class="text-sm font-semibold">Upload File CSV / XLSX</div>
                         <div class="text-xs text-muted mt-1" x-show="!fileName && !errorMessage">
                             Seret dan lepas file di sini atau pilih file secara manual
                         </div>
@@ -67,7 +69,7 @@
 
                 <input
                     type="file"
-                    accept=".csv,text/csv"
+                    accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     class="hidden"
                     x-ref="csvFile"
                     @change="setFile($event.target.files)"
@@ -113,7 +115,7 @@
 
                         <div class="grid grid-cols-[88px_1fr] gap-3">
                             <div class="text-muted">Keterangan</div>
-                            <div class="font-semibold">: -</div>
+                            <div class="font-semibold">: Dataset contoh 23.145 baris</div>
                         </div>
                     </div>
                 </div>
@@ -128,50 +130,71 @@
                     <thead class="bg-surface2 text-muted">
                         <tr class="border-b border-app">
                             <th class="px-4 py-3 text-left font-medium">No</th>
-                            <th class="px-4 py-3 text-left font-medium">Timestamp</th>
-                            <th class="px-4 py-3 text-left font-medium">Source IP</th>
-                            <th class="px-4 py-3 text-left font-medium">Destination IP</th>
-                            <th class="px-4 py-3 text-left font-medium">Protocol</th>
-                            <th class="px-4 py-3 text-left font-medium">Length</th>
-                            <th class="px-4 py-3 text-left font-medium">Info</th>
+                            <th class="px-4 py-3 text-left font-medium">Orig Port</th>
+                            <th class="px-4 py-3 text-left font-medium">Resp Port</th>
+                            <th class="px-4 py-3 text-left font-medium">Proto</th>
+                            <th class="px-4 py-3 text-left font-medium">Service</th>
+                            <th class="px-4 py-3 text-left font-medium">Duration</th>
+                            <th class="px-4 py-3 text-left font-medium">Conn State</th>
+                            <th class="px-4 py-3 text-left font-medium">Label</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-app">
                         <tr class="hover:bg-surface2/50">
                             <td class="px-4 py-3">1</td>
-                            <td class="px-4 py-3 text-muted">2025-05-20 10:15:32</td>
-                            <td class="px-4 py-3 text-muted">192.168.1.10</td>
-                            <td class="px-4 py-3 text-muted">10.0.0.5</td>
-                            <td class="px-4 py-3 text-muted">TCP</td>
-                            <td class="px-4 py-3">523</td>
-                            <td class="px-4 py-3 text-right">...</td>
+                            <td class="px-4 py-3 text-muted">41040</td>
+                            <td class="px-4 py-3 text-muted">80</td>
+                            <td class="px-4 py-3 text-muted">tcp</td>
+                            <td class="px-4 py-3 text-muted">-</td>
+                            <td class="px-4 py-3">3139211</td>
+                            <td class="px-4 py-3 text-muted">S0</td>
+                            <td class="px-4 py-3">
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
+                                    Benign
+                                </span>
+                            </td>
                         </tr>
                         <tr class="hover:bg-surface2/50">
                             <td class="px-4 py-3">2</td>
-                            <td class="px-4 py-3 text-muted">2025-05-20 10:15:33</td>
-                            <td class="px-4 py-3 text-muted">192.168.1.11</td>
-                            <td class="px-4 py-3 text-muted">8.8.8.8</td>
-                            <td class="px-4 py-3 text-muted">UDP</td>
-                            <td class="px-4 py-3">342</td>
-                            <td class="px-4 py-3 text-right">...</td>
+                            <td class="px-4 py-3 text-muted">41040</td>
+                            <td class="px-4 py-3 text-muted">80</td>
+                            <td class="px-4 py-3 text-muted">tcp</td>
+                            <td class="px-4 py-3 text-muted">-</td>
+                            <td class="px-4 py-3 text-muted">-</td>
+                            <td class="px-4 py-3 text-muted">S0</td>
+                            <td class="px-4 py-3">
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
+                                    Benign
+                                </span>
+                            </td>
                         </tr>
                         <tr class="hover:bg-surface2/50">
                             <td class="px-4 py-3">3</td>
-                            <td class="px-4 py-3 text-muted">2025-05-20 10:15:34</td>
-                            <td class="px-4 py-3 text-muted">10.0.0.5</td>
-                            <td class="px-4 py-3 text-muted">172.16.5.23</td>
-                            <td class="px-4 py-3 text-muted">TCP</td>
-                            <td class="px-4 py-3">1024</td>
-                            <td class="px-4 py-3 text-right">...</td>
+                            <td class="px-4 py-3 text-muted">41040</td>
+                            <td class="px-4 py-3 text-muted">80</td>
+                            <td class="px-4 py-3 text-muted">tcp</td>
+                            <td class="px-4 py-3 text-muted">http</td>
+                            <td class="px-4 py-3">1477656</td>
+                            <td class="px-4 py-3 text-muted">SF</td>
+                            <td class="px-4 py-3">
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
+                                    Benign
+                                </span>
+                            </td>
                         </tr>
                         <tr class="hover:bg-surface2/50">
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-right text-muted">...</td>
+                            <td class="px-4 py-3">4</td>
+                            <td class="px-4 py-3 text-muted">57094</td>
+                            <td class="px-4 py-3 text-muted">6667</td>
+                            <td class="px-4 py-3 text-muted">tcp</td>
+                            <td class="px-4 py-3 text-muted">irc</td>
+                            <td class="px-4 py-3">32999954</td>
+                            <td class="px-4 py-3 text-muted">S3</td>
+                            <td class="px-4 py-3">
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]">
+                                    Malicious
+                                </span>
+                            </td>
                         </tr>
                     </tbody>
                 </table>

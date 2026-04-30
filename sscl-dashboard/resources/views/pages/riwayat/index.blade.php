@@ -4,11 +4,14 @@
 @section('page')
     @php
         $histories = [
-            ['date' => '20 Mei 2025 10:00', 'file' => 'trafik_20052025.csv', 'total' => '25.430', 'normal' => '19.200', 'malware' => '6.230'],
-            ['date' => '19 Mei 2025 09:45', 'file' => 'trafik_19052025.csv', 'total' => '18.750', 'normal' => '14.900', 'malware' => '3.850'],
-            ['date' => '18 Mei 2025 09:30', 'file' => 'trafik_18052025.csv', 'total' => '21.300', 'normal' => '16.800', 'malware' => '4.500'],
-            ['date' => '17 Mei 2025 11:20', 'file' => 'trafik_17052025.csv', 'total' => '15.980', 'normal' => '12.600', 'malware' => '3.380'],
-            ['date' => '16 Mei 2025 10:10', 'file' => 'trafik_16052025.csv', 'total' => '12.450', 'normal' => '9.850', 'malware' => '2.600'],
+            [
+                'date' => '23 Apr 2026 20:29',
+                'file' => 'conn.log.labeled_cleaned.xlsx',
+                'total' => '23.145',
+                'benign' => '1.923',
+                'malicious' => '21.222',
+                'proto' => 'tcp, udp',
+            ],
         ];
     @endphp
 
@@ -22,7 +25,7 @@
                         <span class="text-xs text-muted">Dari tanggal</span>
                         <input
                             type="date"
-                            value="2025-05-01"
+                            value="2026-04-23"
                             class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
                         >
                     </label>
@@ -31,7 +34,7 @@
                         <span class="text-xs text-muted">Sampai tanggal</span>
                         <input
                             type="date"
-                            value="2025-05-20"
+                            value="2026-04-23"
                             class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
                         >
                     </label>
@@ -55,15 +58,15 @@
                     <div class="flex-1 space-y-2 text-sm">
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-muted">Total Upload</span>
-                            <span class="font-semibold">12</span>
+                            <span class="font-semibold">1</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-muted">Total Data</span>
-                            <span class="font-semibold">125.430</span>
+                            <span class="font-semibold">23.145</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
-                            <span class="text-muted">Rata-rata Malware</span>
-                            <span class="font-semibold">21,25%</span>
+                            <span class="text-muted">Malicious</span>
+                            <span class="font-semibold">91,69%</span>
                         </div>
                     </div>
                 </div>
@@ -79,8 +82,9 @@
                             <th class="px-4 py-3 text-left font-medium">Tanggal</th>
                             <th class="px-4 py-3 text-left font-medium">Nama File</th>
                             <th class="px-4 py-3 text-left font-medium">Total Data</th>
-                            <th class="px-4 py-3 text-left font-medium">Normal</th>
-                            <th class="px-4 py-3 text-left font-medium">Malware</th>
+                            <th class="px-4 py-3 text-left font-medium">Benign</th>
+                            <th class="px-4 py-3 text-left font-medium">Malicious</th>
+                            <th class="px-4 py-3 text-left font-medium">Proto</th>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
                             <th class="px-4 py-3 text-left font-medium">Aksi</th>
                         </tr>
@@ -92,8 +96,9 @@
                                 <td class="px-4 py-3 text-muted whitespace-nowrap">{{ $history['date'] }}</td>
                                 <td class="px-4 py-3 text-muted whitespace-nowrap">{{ $history['file'] }}</td>
                                 <td class="px-4 py-3">{{ $history['total'] }}</td>
-                                <td class="px-4 py-3 text-muted">{{ $history['normal'] }}</td>
-                                <td class="px-4 py-3 text-muted">{{ $history['malware'] }}</td>
+                                <td class="px-4 py-3 text-muted">{{ $history['benign'] }}</td>
+                                <td class="px-4 py-3 text-muted">{{ $history['malicious'] }}</td>
+                                <td class="px-4 py-3 text-muted">{{ $history['proto'] }}</td>
                                 <td class="px-4 py-3">
                                     <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
                                         Selesai
@@ -109,16 +114,6 @@
                                 </td>
                             </tr>
                         @endforeach
-                        <tr class="hover:bg-surface2/50">
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                            <td class="px-4 py-3 text-muted">...</td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
