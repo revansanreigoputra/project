@@ -5,9 +5,10 @@
     <div
         class="rounded-3xl bg-surface shadow-soft p-6"
         x-data="{
-            fileName: '',
+            fileName: @js($prediction['file_name'] ?? ''),
             errorMessage: '',
             isDragging: false,
+            isProcessing: false,
             chooseFile() {
                 this.$refs.csvFile.click();
             },
@@ -22,7 +23,7 @@
 
                 if (!valid) {
                     this.fileName = '';
-                    this.errorMessage = 'File harus berformat CSV atau XLSX';
+                    this.errorMessage = 'File harus berformat CSV, XLSX, atau XLS';
                     this.$refs.csvFile.value = '';
                     return;
                 }
@@ -44,7 +45,10 @@
             }
         }"
     >
-        <div class="grid gap-6 lg:grid-cols-12">
+        <form method="POST" action="{{ route('scan.store') }}" enctype="multipart/form-data" @submit="isProcessing = true">
+            @csrf
+
+            <div class="grid gap-6 lg:grid-cols-12">
             {{-- Upload Area --}}
             <div class="lg:col-span-8">
                 <div
@@ -64,12 +68,16 @@
                         </div>
                         <div class="text-xs text-primary mt-1 font-semibold" x-show="fileName" x-text="'File dipilih: ' + fileName"></div>
                         <div class="text-xs text-[color:var(--danger)] mt-1 font-semibold" x-show="errorMessage" x-text="errorMessage"></div>
+                        @if (isset($errors) && $errors->has('file'))
+                            <div class="text-xs text-[color:var(--danger)] mt-1 font-semibold">{{ $errors->first('file') }}</div>
+                        @endif
                     </div>
                 </div>
 
                 <input
                     type="file"
-                    accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    name="file"
+                    accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                     class="hidden"
                     x-ref="csvFile"
                     @change="setFile($event.target.files)"
@@ -83,9 +91,11 @@
                         Pilih File
                     </button>
                     <button
-                        type="button"
-                        class="px-6 py-2 rounded-xl border border-app text-sm font-semibold hover:bg-surface2 transition-colors">
-                        Proses Deteksi
+                        type="submit"
+                        :disabled="!fileName || isProcessing"
+                        class="px-6 py-2 rounded-xl border border-app text-sm font-semibold hover:bg-surface2 transition-colors disabled:cursor-not-allowed disabled:opacity-60">
+                        <span x-show="!isProcessing">Proses Deteksi</span>
+                        <span x-show="isProcessing">Memproses...</span>
                     </button>
                 </div>
             </div>
@@ -98,32 +108,42 @@
                     <div class="mt-5 space-y-4 text-sm">
                         <div class="grid grid-cols-[88px_1fr] gap-3">
                             <div class="text-muted">Status</div>
-                            <div class="font-semibold">: Menunggu</div>
+                            <div class="font-semibold">
+                                : <span x-show="isProcessing">Memproses</span><span x-show="!isProcessing">{{ isset($prediction) ? 'Selesai' : 'Menunggu' }}</span>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-[88px_1fr] gap-3">
                             <div class="text-muted">Progress</div>
-                            <div class="font-semibold">: 0%</div>
+                            <div class="font-semibold">
+                                : <span x-show="isProcessing">50%</span><span x-show="!isProcessing">{{ isset($prediction) ? '100%' : '0%' }}</span>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-[88px_1fr] gap-3">
                             <div></div>
                             <div class="w-full bg-app rounded-full h-2.5">
-                                <div class="bg-primary h-2.5 rounded-full" style="width: 0%"></div>
+                                <div
+                                    class="bg-primary h-2.5 rounded-full transition-all"
+                                    :style="isProcessing ? 'width: 50%' : 'width: {{ isset($prediction) ? '100' : '0' }}%'"
+                                ></div>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-[88px_1fr] gap-3">
                             <div class="text-muted">Keterangan</div>
-                            <div class="font-semibold">: Dataset contoh 23.145 baris</div>
+                            <div class="font-semibold">
+                                : <span x-show="isProcessing">Mengirim file ke Flask ML API</span><span x-show="!isProcessing">{{ isset($prediction) ? 'Prediksi ' . number_format($prediction['total'], 0, ',', '.') . ' baris berhasil' : 'Dataset contoh 23.145 baris' }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+            </div>
+        </form>
 
         {{-- Preview Data Table --}}
-        <div class="mt-6">
+        {{-- <div class="mt-6">
             <div class="text-sm font-semibold mb-3">Preview Data</div>
             <div class="overflow-x-auto rounded-2xl border border-app">
                 <table class="w-full text-sm">
@@ -199,6 +219,78 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+        </div> --}}
+
+        @isset($prediction)
+            <div class="mt-6 rounded-3xl bg-surface2 border border-app p-5">
+                <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <div class="text-sm font-semibold">Hasil Prediksi Model</div>
+                        <div class="text-xs text-muted mt-1">{{ $prediction['file_name'] }} - {{ number_format($prediction['total'], 0, ',', '.') }} baris diproses</div>
+                    </div>
+                    <div class="text-xs text-muted">Menampilkan 100 baris pertama</div>
+                </div>
+
+                <div class="mt-5 grid gap-4 md:grid-cols-4">
+                    <div class="rounded-2xl bg-surface border border-app p-4">
+                        <div class="text-xs text-muted">Benign</div>
+                        <div class="mt-1 text-2xl font-semibold">{{ number_format($prediction['summary']['benign'], 0, ',', '.') }}</div>
+                        <div class="text-xs text-muted">{{ number_format($prediction['summary']['benign_percent'], 2, ',', '.') }}%</div>
+                    </div>
+                    <div class="rounded-2xl bg-surface border border-app p-4">
+                        <div class="text-xs text-muted">Malicious</div>
+                        <div class="mt-1 text-2xl font-semibold">{{ number_format($prediction['summary']['malicious'], 0, ',', '.') }}</div>
+                        <div class="text-xs text-muted">{{ number_format($prediction['summary']['malicious_percent'], 2, ',', '.') }}%</div>
+                    </div>
+                    <div class="rounded-2xl bg-surface border border-app p-4">
+                        <div class="text-xs text-muted">Rata-rata Confidence</div>
+                        <div class="mt-1 text-2xl font-semibold">{{ number_format($prediction['summary']['average_confidence'], 2, ',', '.') }}%</div>
+                    </div>
+                    <div class="rounded-2xl bg-surface border border-app p-4">
+                        <div class="text-xs text-muted">Total Diproses</div>
+                        <div class="mt-1 text-2xl font-semibold">{{ number_format($prediction['total'], 0, ',', '.') }}</div>
+                    </div>
+                </div>
+
+                <div class="mt-5 overflow-x-auto rounded-2xl border border-app">
+                    <table class="w-full text-sm">
+                        <thead class="bg-surface text-muted">
+                            <tr class="border-b border-app">
+                                <th class="px-4 py-3 text-left font-medium">Row</th>
+                                <th class="px-4 py-3 text-left font-medium">Label</th>
+                                <th class="px-4 py-3 text-left font-medium">Confidence</th>
+                                <th class="px-4 py-3 text-left font-medium">Prob. Benign</th>
+                                <th class="px-4 py-3 text-left font-medium">Prob. Malicious</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-app">
+                            @foreach ($prediction['results'] as $result)
+                                @php
+                                    $label = $result['label'] ?? 'Unknown';
+                                    $tone = $label === 'Malicious' ? 'danger' : 'accent';
+                                @endphp
+                                <tr class="hover:bg-surface/60">
+                                    <td class="px-4 py-3">{{ $result['row'] ?? $loop->index }}</td>
+                                    <td class="px-4 py-3">
+                                        <span
+                                            @class([
+                                                'px-3 py-1 rounded-full text-xs font-semibold',
+                                                'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $tone === 'danger',
+                                                'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $tone === 'accent',
+                                            ])
+                                        >
+                                            {{ $label }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 font-semibold">{{ number_format(((float) ($result['confidence'] ?? 0)) * 100, 2, ',', '.') }}%</td>
+                                    <td class="px-4 py-3 text-muted">{{ number_format(((float) data_get($result, 'probabilities.Benign', 0)) * 100, 2, ',', '.') }}%</td>
+                                    <td class="px-4 py-3 text-muted">{{ number_format(((float) data_get($result, 'probabilities.Malicious', 0)) * 100, 2, ',', '.') }}%</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endisset
     </div>
 @endsection

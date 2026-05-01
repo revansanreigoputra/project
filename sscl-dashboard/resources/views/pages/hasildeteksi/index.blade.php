@@ -3,6 +3,7 @@
 
 @section('page')
     @php
+        $prediction = session('last_prediction');
         $results = [
             ['row' => '0', 'orig' => '41040', 'resp' => '80', 'proto' => 'tcp', 'service' => '-', 'duration' => '3139211', 'state' => 'S0', 'label' => 'Benign', 'tone' => 'accent'],
             ['row' => '3', 'orig' => '41040', 'resp' => '80', 'proto' => 'tcp', 'service' => 'http', 'duration' => '1477656', 'state' => 'SF', 'label' => 'Benign', 'tone' => 'accent'],
@@ -14,6 +15,27 @@
     @endphp
 
     <div class="rounded-3xl bg-surface shadow-soft p-6">
+        @if ($prediction)
+            <div class="mb-5 grid gap-4 md:grid-cols-4">
+                <div class="rounded-2xl bg-surface2 border border-app p-4">
+                    <div class="text-xs text-muted">File</div>
+                    <div class="mt-1 text-sm font-semibold truncate">{{ $prediction['file_name'] }}</div>
+                </div>
+                <div class="rounded-2xl bg-surface2 border border-app p-4">
+                    <div class="text-xs text-muted">Total Diproses</div>
+                    <div class="mt-1 text-2xl font-semibold">{{ number_format($prediction['total'], 0, ',', '.') }}</div>
+                </div>
+                <div class="rounded-2xl bg-surface2 border border-app p-4">
+                    <div class="text-xs text-muted">Benign</div>
+                    <div class="mt-1 text-2xl font-semibold">{{ number_format($prediction['summary']['benign'], 0, ',', '.') }}</div>
+                </div>
+                <div class="rounded-2xl bg-surface2 border border-app p-4">
+                    <div class="text-xs text-muted">Malicious</div>
+                    <div class="mt-1 text-2xl font-semibold">{{ number_format($prediction['summary']['malicious'], 0, ',', '.') }}</div>
+                </div>
+            </div>
+        @endif
+
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div class="relative flex-1">
                 <x-lucide-search class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
@@ -51,38 +73,70 @@
                 <thead class="bg-surface2 text-muted">
                     <tr class="border-b border-app">
                         <th class="px-4 py-3 text-left font-medium">Row ID</th>
-                        <th class="px-4 py-3 text-left font-medium">Orig Port</th>
-                        <th class="px-4 py-3 text-left font-medium">Resp Port</th>
-                        <th class="px-4 py-3 text-left font-medium">Proto</th>
-                        <th class="px-4 py-3 text-left font-medium">Service</th>
-                        <th class="px-4 py-3 text-left font-medium">Duration</th>
-                        <th class="px-4 py-3 text-left font-medium">Conn State</th>
+                        @unless ($prediction)
+                            <th class="px-4 py-3 text-left font-medium">Orig Port</th>
+                            <th class="px-4 py-3 text-left font-medium">Resp Port</th>
+                            <th class="px-4 py-3 text-left font-medium">Proto</th>
+                            <th class="px-4 py-3 text-left font-medium">Service</th>
+                            <th class="px-4 py-3 text-left font-medium">Duration</th>
+                            <th class="px-4 py-3 text-left font-medium">Conn State</th>
+                        @else
+                            <th class="px-4 py-3 text-left font-medium">Confidence</th>
+                            <th class="px-4 py-3 text-left font-medium">Prob. Benign</th>
+                            <th class="px-4 py-3 text-left font-medium">Prob. Malicious</th>
+                        @endunless
                         <th class="px-4 py-3 text-left font-medium">Label</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-app">
-                    @foreach ($results as $result)
-                        <tr class="hover:bg-surface2/50">
-                            <td class="px-4 py-3">{{ $result['row'] }}</td>
-                            <td class="px-4 py-3 text-muted">{{ $result['orig'] }}</td>
-                            <td class="px-4 py-3 text-muted">{{ $result['resp'] }}</td>
-                            <td class="px-4 py-3 text-muted">{{ $result['proto'] }}</td>
-                            <td class="px-4 py-3 text-muted">{{ $result['service'] }}</td>
-                            <td class="px-4 py-3 text-muted">{{ $result['duration'] }}</td>
-                            <td class="px-4 py-3 text-muted">{{ $result['state'] }}</td>
-                            <td class="px-4 py-3">
-                                <span
-                                    @class([
-                                        'px-3 py-1 rounded-full text-xs font-semibold',
-                                        'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $result['tone'] === 'danger',
-                                        'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $result['tone'] === 'accent',
-                                    ])
-                                >
-                                    {{ $result['label'] }}
-                                </span>
-                            </td>
-                        </tr>
-                    @endforeach
+                    @if ($prediction)
+                        @foreach ($prediction['results'] as $result)
+                            @php
+                                $label = $result['label'] ?? 'Unknown';
+                                $tone = $label === 'Malicious' ? 'danger' : 'accent';
+                            @endphp
+                            <tr class="hover:bg-surface2/50">
+                                <td class="px-4 py-3">{{ $result['row'] ?? $loop->index }}</td>
+                                <td class="px-4 py-3 font-semibold">{{ number_format(((float) ($result['confidence'] ?? 0)) * 100, 2, ',', '.') }}%</td>
+                                <td class="px-4 py-3 text-muted">{{ number_format(((float) data_get($result, 'probabilities.Benign', 0)) * 100, 2, ',', '.') }}%</td>
+                                <td class="px-4 py-3 text-muted">{{ number_format(((float) data_get($result, 'probabilities.Malicious', 0)) * 100, 2, ',', '.') }}%</td>
+                                <td class="px-4 py-3">
+                                    <span
+                                        @class([
+                                            'px-3 py-1 rounded-full text-xs font-semibold',
+                                            'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $tone === 'danger',
+                                            'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $tone === 'accent',
+                                        ])
+                                    >
+                                        {{ $label }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    @else
+                        @foreach ($results as $result)
+                            <tr class="hover:bg-surface2/50">
+                                <td class="px-4 py-3">{{ $result['row'] }}</td>
+                                <td class="px-4 py-3 text-muted">{{ $result['orig'] }}</td>
+                                <td class="px-4 py-3 text-muted">{{ $result['resp'] }}</td>
+                                <td class="px-4 py-3 text-muted">{{ $result['proto'] }}</td>
+                                <td class="px-4 py-3 text-muted">{{ $result['service'] }}</td>
+                                <td class="px-4 py-3 text-muted">{{ $result['duration'] }}</td>
+                                <td class="px-4 py-3 text-muted">{{ $result['state'] }}</td>
+                                <td class="px-4 py-3">
+                                    <span
+                                        @class([
+                                            'px-3 py-1 rounded-full text-xs font-semibold',
+                                            'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $result['tone'] === 'danger',
+                                            'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $result['tone'] === 'accent',
+                                        ])
+                                    >
+                                        {{ $result['label'] }}
+                                    </span>
+                                </td>
+                            </tr>
+                        @endforeach
+                    @endif
                 </tbody>
             </table>
         </div>

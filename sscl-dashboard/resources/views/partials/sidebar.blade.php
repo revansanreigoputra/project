@@ -3,8 +3,8 @@
     ['href' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'label' => 'Dashboard', 'icon' => 'layout-dashboard'],
     ['href' => route('scan.index'), 'active' => request()->routeIs('scan.index'), 'label' => 'Upload Data', 'icon' => 'cloud-upload'],
     ['href' => route('hasildeteksi.index'), 'active' => request()->routeIs('hasildeteksi.index'), 'label' => 'Hasil Deteksi', 'icon' => 'list-checks'],
-    ['href' => route('riwayat.index'), 'active' => request()->routeIs('riwayat.index'), 'label' => 'Riwayat', 'icon' => 'clock'],
     ['href' => route('laporan.index'), 'active' => request()->routeIs('laporan.index'), 'label' => 'Laporan', 'icon' => 'file-text'],
+    ['href' => route('riwayat.index'), 'active' => request()->routeIs('riwayat.index'), 'label' => 'Riwayat', 'icon' => 'clock'],
   ];
 @endphp
 
