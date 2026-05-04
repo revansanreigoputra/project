@@ -69,8 +69,10 @@ class HistoryTest extends TestCase
 
         $user = User::factory()->create();
         Storage::put('scan-uploads/delete.csv', "row,label\n1,Benign\n");
+        Storage::put('scan-results/delete-results.csv', "row_id,label\n1,Benign\n");
         $upload = $this->createUpload($user, 'delete.csv', 'scan-uploads/delete.csv');
         $scanJob = $this->createScanJob($user, $upload, Carbon::parse('2026-05-04 02:00:00', 'UTC'));
+        $scanJob->update(['results_path' => 'scan-results/delete-results.csv']);
 
         $response = $this
             ->actingAs($user)
@@ -82,6 +84,7 @@ class HistoryTest extends TestCase
         $this->assertDatabaseMissing('scan_uploads', ['id' => $upload->id]);
         $this->assertDatabaseMissing('scan_jobs', ['id' => $scanJob->id]);
         Storage::assertMissing('scan-uploads/delete.csv');
+        Storage::assertMissing('scan-results/delete-results.csv');
     }
 
     public function test_history_can_download_original_uploaded_file(): void
@@ -149,7 +152,9 @@ class HistoryTest extends TestCase
 
         $response->assertRedirect(route('scan.index'));
         $scanJob = ScanJob::query()->firstOrFail();
-        $this->assertCount(105, $scanJob->results);
+        $this->assertCount(100, $scanJob->results);
+        $this->assertNotNull($scanJob->results_path);
+        Storage::assertExists($scanJob->results_path);
 
         $download = $this
             ->actingAs($user)

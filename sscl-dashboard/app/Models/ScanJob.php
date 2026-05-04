@@ -24,6 +24,7 @@ class ScanJob extends Model
         'error_message',
         'summary',
         'results',
+        'results_path',
     ];
 
     protected function casts(): array

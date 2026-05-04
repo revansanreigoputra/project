@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
@@ -129,6 +130,16 @@ class ScanJobController extends Controller
         $total = (int) ($payload['total'] ?? $results->count());
         $summary = $this->summarizePrediction($results, $total);
 
+        try {
+            $resultsPath = $this->storePredictionResults($scanJob, $upload, $results);
+        } catch (Throwable $exception) {
+            return $this->markScanAsFailed(
+                $scanJob,
+                $upload,
+                'Hasil deteksi gagal disimpan ke storage.'
+            );
+        }
+
         $scanJob->update([
             'processed_at' => now(),
             'total' => $total,
@@ -141,7 +152,8 @@ class ScanJobController extends Controller
             'status' => 'Selesai',
             'error_message' => null,
             'summary' => $summary,
-            'results' => $results->values()->all(),
+            'results' => $results->take(100)->values()->all(),
+            'results_path' => $resultsPath,
         ]);
 
         $upload->update(['status' => 'processed']);
@@ -166,6 +178,56 @@ class ScanJobController extends Controller
             'malicious_percent' => $total > 0 ? round((($labels['Malicious'] ?? 0) / $total) * 100, 2) : 0,
             'average_confidence' => $averageConfidence ? round($averageConfidence * 100, 2) : 0,
         ];
+    }
+
+    private function storePredictionResults(ScanJob $scanJob, ScanUpload $upload, Collection $results): string
+    {
+        $path = 'scan-results/'.$scanJob->id.'-'.$this->downloadFileName($upload, 'hasil-deteksi', 'csv');
+        $stream = fopen('php://temp', 'r+');
+
+        fwrite($stream, "\xEF\xBB\xBF");
+        fputcsv($stream, [
+            'row_id',
+            'label',
+            'confidence_percent',
+            'prob_benign_percent',
+            'prob_malicious_percent',
+        ]);
+
+        foreach ($results as $index => $result) {
+            fputcsv($stream, [
+                $result['row'] ?? $index,
+                $result['label'] ?? 'Unknown',
+                $this->csvPercent($result['confidence'] ?? 0),
+                $this->csvPercent(data_get($result, 'probabilities.Benign', 0)),
+                $this->csvPercent(data_get($result, 'probabilities.Malicious', 0)),
+            ]);
+        }
+
+        rewind($stream);
+        $stored = Storage::put($path, $stream);
+        fclose($stream);
+
+        if (! $stored) {
+            throw ValidationException::withMessages([
+                'file' => 'Hasil deteksi gagal disimpan ke storage.',
+            ]);
+        }
+
+        return $path;
+    }
+
+    private function downloadFileName(ScanUpload $upload, string $suffix, string $extension): string
+    {
+        $baseName = pathinfo($upload->original_name, PATHINFO_FILENAME) ?: 'riwayat';
+        $slug = Str::slug($baseName) ?: 'riwayat';
+
+        return $slug.'-'.$suffix.'.'.$extension;
+    }
+
+    private function csvPercent($value): string
+    {
+        return number_format(((float) $value) * 100, 2, '.', '');
     }
 
     private function latestPredictionFor(Request $request): ?array

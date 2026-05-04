@@ -109,6 +109,10 @@ class HistoryController extends Controller
 
         $path = $scanUpload->path;
         $fileName = $scanUpload->original_name;
+        $resultsPaths = $scanUpload->scanJobs()
+            ->whereNotNull('results_path')
+            ->pluck('results_path')
+            ->all();
 
         DB::transaction(function () use ($scanUpload) {
             $scanUpload->scanJobs()->delete();
@@ -117,6 +121,12 @@ class HistoryController extends Controller
 
         if ($path && Storage::exists($path)) {
             Storage::delete($path);
+        }
+
+        foreach ($resultsPaths as $resultsPath) {
+            if ($resultsPath && Storage::exists($resultsPath)) {
+                Storage::delete($resultsPath);
+            }
         }
 
         return redirect()
@@ -220,6 +230,13 @@ class HistoryController extends Controller
         }
 
         $fileName = $this->downloadFileName($scanUpload, 'hasil-deteksi', 'csv');
+
+        if ($scanJob->results_path && Storage::exists($scanJob->results_path)) {
+            return Storage::download($scanJob->results_path, $fileName, [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+            ]);
+        }
+
         $results = collect($scanJob->results ?? []);
 
         return response()->streamDownload(function () use ($results) {
