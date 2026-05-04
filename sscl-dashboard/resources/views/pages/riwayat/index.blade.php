@@ -27,7 +27,19 @@
         };
     @endphp
 
-    <div class="space-y-6">
+    <div
+        class="space-y-6"
+        x-data="{
+            deleteModalOpen: false,
+            deleteFormAction: '',
+            deleteFileName: '',
+            openDeleteModal(action, fileName) {
+                this.deleteFormAction = action;
+                this.deleteFileName = fileName;
+                this.deleteModalOpen = true;
+            }
+        }"
+    >
         <div class="grid gap-6 lg:grid-cols-12">
             <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-8">
                 <div class="text-sm font-semibold">Filter Riwayat</div>
@@ -112,21 +124,15 @@
         </div>
 
         <div class="rounded-3xl bg-surface shadow-soft p-6">
-            <div class="overflow-x-auto rounded-2xl border border-app">
-                <table class="w-full text-sm">
+            <div class="overflow-hidden rounded-2xl border border-app">
+                <table class="w-full table-fixed text-sm">
                     <thead class="bg-surface2 text-muted">
                         <tr class="border-b border-app">
-                            <th class="px-4 py-3 text-left font-medium">No</th>
-                            <th class="px-4 py-3 text-left font-medium">Waktu Upload</th>
-                            <th class="px-4 py-3 text-left font-medium">Waktu Proses</th>
-                            <th class="px-4 py-3 text-left font-medium">Nama File</th>
-                            <th class="px-4 py-3 text-left font-medium">Ukuran</th>
-                            <th class="px-4 py-3 text-left font-medium">Total Data</th>
-                            <th class="px-4 py-3 text-left font-medium">Benign</th>
-                            <th class="px-4 py-3 text-left font-medium">Malicious</th>
-                            <th class="px-4 py-3 text-left font-medium">Avg. Confidence</th>
-                            <th class="px-4 py-3 text-left font-medium">Status</th>
-                            <th class="px-4 py-3 text-left font-medium">Aksi</th>
+                            <th class="hidden w-14 px-4 py-3 text-center font-medium sm:table-cell">No</th>
+                            <th class="px-4 py-3 text-center font-medium">Data Upload</th>
+                            <th class="hidden w-[28%] px-4 py-3 text-left font-medium lg:table-cell">Ringkasan Deteksi</th>
+                            <th class="w-28 px-4 py-3 text-left font-medium md:w-36">Status</th>
+                            <th class="w-24 px-4 py-3 text-center font-medium md:w-40 ">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-app">
@@ -135,15 +141,41 @@
                                 $status = $item['status'] ?? '-';
                             @endphp
                             <tr class="hover:bg-surface2/50">
-                                <td class="px-4 py-3">{{ $loop->iteration }}</td>
-                                <td class="px-4 py-3 text-muted whitespace-nowrap">{{ $item['uploaded_at'] }}</td>
-                                <td class="px-4 py-3 text-muted whitespace-nowrap">{{ $item['processed_at'] }}</td>
-                                <td class="px-4 py-3 text-muted whitespace-nowrap">{{ $item['file_name'] }}</td>
-                                <td class="px-4 py-3 text-muted whitespace-nowrap">{{ $formatFileSize($item['size'] ?? 0) }}</td>
-                                <td class="px-4 py-3">{{ $formatNumber($item['total']) }}</td>
-                                <td class="px-4 py-3 text-muted">{{ $formatNumber($item['benign']) }}</td>
-                                <td class="px-4 py-3 text-muted">{{ $formatNumber($item['malicious']) }}</td>
-                                <td class="px-4 py-3 text-muted">{{ $formatPercent($item['average_confidence']) }}%</td>
+                                <td class="hidden px-4 py-4 align-top sm:table-cell">{{ $loop->iteration }}</td>
+                                <td class="min-w-0 px-4 py-4 align-top">
+                                    <div class="min-w-0">
+                                        <div class="truncate font-semibold" title="{{ $item['file_name'] }}">{{ $item['file_name'] }}</div>
+                                        <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+                                            <span>Upload: {{ $item['uploaded_at'] }}</span>
+                                            <span class="hidden md:inline">Proses: {{ $item['processed_at'] }}</span>
+                                            <span>{{ $formatFileSize($item['size'] ?? 0) }}</span>
+                                        </div>
+                                        <div class="mt-2 grid gap-1 text-xs text-muted lg:hidden">
+                                            <span>Total: <span class="font-semibold text-app">{{ $formatNumber($item['total']) }}</span></span>
+                                            <span>Malicious: <span class="font-semibold text-app">{{ $formatNumber($item['malicious']) }} / {{ $formatPercent($item['malicious_percent']) }}%</span></span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="hidden px-4 py-4 align-top lg:table-cell">
+                                    <div class="grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                            <div class="text-muted">Total</div>
+                                            <div class="font-semibold">{{ $formatNumber($item['total']) }}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-muted">Confidence</div>
+                                            <div class="font-semibold">{{ $formatPercent($item['average_confidence']) }}%</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-muted">Benign</div>
+                                            <div class="font-semibold">{{ $formatNumber($item['benign']) }}</div>
+                                        </div>
+                                        <div>
+                                            <div class="text-muted">Malicious</div>
+                                            <div class="font-semibold">{{ $formatNumber($item['malicious']) }}</div>
+                                        </div>
+                                    </div>
+                                </td>
                                 <td class="px-4 py-3">
                                     <span
                                         @class([
@@ -156,88 +188,93 @@
                                         {{ $status }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-3">
-                                    <div class="flex flex-wrap items-center gap-2">
+                                <td class="px-4 py-3 align-top">
+                                    <div class="flex items-center justify-end gap-2">
                                         <a
-                                            href="{{ route('riwayat.show', ['scanUpload' => $item['upload_id'], 'mode' => 'before']) }}"
-                                            class="inline-flex items-center gap-1 rounded-xl border border-app px-3 py-2 text-xs font-semibold hover:bg-surface2 transition-colors"
-                                            title="Lihat data sebelum deteksi"
+                                            href="{{ route('riwayat.show', $item['upload_id']) }}"
+                                            class="inline-grid h-9 w-9 place-items-center rounded-xl border border-app text-xs font-semibold hover:bg-surface2 transition-colors md:inline-flex md:w-auto md:px-3 md:gap-1"
+                                            title="Lihat detail"
                                         >
                                             <x-lucide-eye class="h-4 w-4" />
-                                            Sebelum
+                                            <span class="hidden md:inline">Detail</span>
                                         </a>
 
-                                        <a
-                                            href="{{ route('riwayat.download', ['scanUpload' => $item['upload_id'], 'mode' => 'before']) }}"
-                                            class="inline-flex items-center gap-1 rounded-xl border border-app px-3 py-2 text-xs font-semibold hover:bg-surface2 transition-colors"
-                                            title="Download data sebelum deteksi"
+                                        <button
+                                            type="button"
+                                            @click="openDeleteModal(@js(route('riwayat.destroy', $item['upload_id'])), @js($item['file_name']))"
+                                            class="inline-grid h-9 w-9 place-items-center rounded-xl border border-[rgba(248,113,113,0.35)] text-xs font-semibold text-[color:var(--danger)] hover:bg-[rgba(248,113,113,0.12)] transition-colors md:inline-flex md:w-auto md:px-3 md:gap-1"
+                                            title="Hapus data asli dan hasil deteksi"
                                         >
-                                            <x-lucide-download class="h-4 w-4" />
-                                            Asli
-                                        </a>
-
-                                        @if ($item['can_view_after'])
-                                            <a
-                                                href="{{ route('riwayat.show', ['scanUpload' => $item['upload_id'], 'mode' => 'after']) }}"
-                                                class="inline-flex items-center gap-1 rounded-xl border border-app px-3 py-2 text-xs font-semibold hover:bg-surface2 transition-colors"
-                                                title="Lihat data sesudah deteksi"
-                                            >
-                                                <x-lucide-list-checks class="h-4 w-4" />
-                                                Sesudah
-                                            </a>
-
-                                            <a
-                                                href="{{ route('riwayat.download', ['scanUpload' => $item['upload_id'], 'mode' => 'after']) }}"
-                                                class="inline-flex items-center gap-1 rounded-xl border border-app px-3 py-2 text-xs font-semibold hover:bg-surface2 transition-colors"
-                                                title="Download hasil deteksi"
-                                            >
-                                                <x-lucide-file-down class="h-4 w-4" />
-                                                Hasil
-                                            </a>
-                                        @else
-                                            <span
-                                                class="inline-flex cursor-not-allowed items-center gap-1 rounded-xl border border-app px-3 py-2 text-xs font-semibold text-muted opacity-60"
-                                                title="Data ini belum memiliki hasil deteksi"
-                                            >
-                                                <x-lucide-list-checks class="h-4 w-4" />
-                                                Sesudah
-                                            </span>
-
-                                            <span
-                                                class="inline-flex cursor-not-allowed items-center gap-1 rounded-xl border border-app px-3 py-2 text-xs font-semibold text-muted opacity-60"
-                                                title="Hasil deteksi belum tersedia"
-                                            >
-                                                <x-lucide-file-down class="h-4 w-4" />
-                                                Hasil
-                                            </span>
-                                        @endif
-
-                                        <form
-                                            method="POST"
-                                            action="{{ route('riwayat.destroy', $item['upload_id']) }}"
-                                            onsubmit="return confirm('Hapus data asli dan hasil deteksi untuk file ini?')"
-                                        >
-                                            @csrf
-                                            @method('DELETE')
-                                            <button
-                                                type="submit"
-                                                class="inline-flex items-center gap-1 rounded-xl border border-[rgba(248,113,113,0.35)] px-3 py-2 text-xs font-semibold text-[color:var(--danger)] hover:bg-[rgba(248,113,113,0.12)] transition-colors"
-                                                title="Hapus data asli dan hasil deteksi"
-                                            >
-                                                <x-lucide-trash-2 class="h-4 w-4" />
-                                                Hapus
-                                            </button>
-                                        </form>
+                                            <x-lucide-trash-2 class="h-4 w-4" />
+                                            <span class="hidden md:inline">Hapus</span>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td class="px-4 py-4 text-muted" colspan="11">Belum ada riwayat upload atau proses deteksi di database.</td>
+                                <td class="px-4 py-4 text-muted" colspan="5">Belum ada riwayat upload atau proses deteksi di database.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <div
+            x-show="deleteModalOpen"
+            x-cloak
+            class="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4 backdrop-blur-sm"
+            x-transition.opacity
+        >
+            <div
+                @click.outside="deleteModalOpen = false"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-3 scale-95"
+                x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                class="w-full max-w-md overflow-hidden rounded-3xl border border-app bg-surface shadow-soft"
+                role="dialog"
+                aria-modal="true"
+            >
+                <div class="p-6">
+                    <div class="flex items-start gap-4">
+                        <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[rgba(248,113,113,0.14)] text-[color:var(--danger)]">
+                            <x-lucide-trash-2 class="h-6 w-6" />
+                        </div>
+                        <div class="min-w-0">
+                            <div class="text-lg font-semibold">Hapus Riwayat?</div>
+                            <div class="mt-2 text-sm leading-6 text-muted">
+                                Data asli dan hasil deteksi untuk
+                                <span class="font-semibold text-app" x-text="deleteFileName"></span>
+                                akan dihapus permanen.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 border-t border-app bg-surface2 px-6 py-4">
+                    <button
+                        type="button"
+                        @click="deleteModalOpen = false"
+                        class="rounded-xl border border-app px-5 py-2 text-sm font-semibold hover:bg-surface transition-colors"
+                    >
+                        Batal
+                    </button>
+                    <form method="POST" :action="deleteFormAction">
+                        @csrf
+                        @method('DELETE')
+                        <button
+                            type="submit"
+                            class="inline-flex items-center gap-2 rounded-xl bg-[color:var(--danger)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                        >
+                            <x-lucide-trash-2 class="h-4 w-4" />
+                            Hapus
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
