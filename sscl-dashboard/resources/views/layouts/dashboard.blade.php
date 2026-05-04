@@ -7,6 +7,7 @@
     <main class="md:pl-72">
       <div class="p-4 md:p-6">
         @include('partials.topbar')
+        @include('partials.toast')
 
         <div class="mt-4 md:mt-6">
           @yield('page')

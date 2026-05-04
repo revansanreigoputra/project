@@ -4,7 +4,7 @@
 @section('page')
     @php
         $prediction = $prediction ?? null;
-        $results = collect($prediction['results'] ?? []);
+        $results = collect($prediction['results'] ?? [])->take(100);
     @endphp
 
     <div class="rounded-3xl bg-surface shadow-soft p-6">

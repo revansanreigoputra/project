@@ -21,6 +21,11 @@ Route::middleware('auth')->group(function () {
     Route::resource('scan', ScanJobController::class)->only(['index', 'store']);
     Route::get('/hasil-deteksi', [DetectionResultController::class, 'index'])->name('hasildeteksi.index');
     Route::get('/riwayat', [HistoryController::class, 'index'])->name('riwayat.index');
+    Route::get('/riwayat/{scanUpload}', [HistoryController::class, 'show'])->name('riwayat.show');
+    Route::get('/riwayat/{scanUpload}/download/{mode}', [HistoryController::class, 'download'])
+        ->whereIn('mode', ['before', 'after'])
+        ->name('riwayat.download');
+    Route::delete('/riwayat/{scanUpload}', [HistoryController::class, 'destroy'])->name('riwayat.destroy');
     Route::get('/laporan', [ReportController::class, 'index'])->name('laporan.index');
     // Route::resource('logs', TrafficLogController::class)->only(['index']);
     // Route::resource('model', MlModelController::class)->only(['index']);

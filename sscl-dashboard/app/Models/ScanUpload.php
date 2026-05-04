@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -34,5 +35,12 @@ class ScanUpload extends Model
     public function scanJobs(): HasMany
     {
         return $this->hasMany(ScanJob::class);
+    }
+
+    public function scopeForUser(Builder $query, $user): Builder
+    {
+        return $user
+            ? $query->where('user_id', $user->getAuthIdentifier())
+            : $query->whereNull('user_id');
     }
 }

@@ -313,7 +313,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-app">
-                            @foreach ($prediction['results'] as $result)
+                            @foreach (collect($prediction['results'])->take(100) as $result)
                                 @php
                                     $label = $result['label'] ?? 'Unknown';
                                     $tone = $label === 'Malicious' ? 'danger' : 'accent';

@@ -4,6 +4,7 @@
     'scan.index' => 'Upload Data',
     'hasildeteksi.index' => 'Hasil Deteksi',
     'riwayat.index' => 'Riwayat',
+    'riwayat.show' => 'Detail Riwayat',
     'laporan.index' => 'Laporan',
   ];
   $title = $map[Route::currentRouteName()] ?? 'Dashboard';

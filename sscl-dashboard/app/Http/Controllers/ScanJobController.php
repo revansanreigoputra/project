@@ -7,10 +7,10 @@ use App\Models\ScanUpload;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -103,12 +103,12 @@ class ScanJobController extends Controller
             $response = Http::timeout($timeout)
                 ->withHeaders(['X-API-KEY' => $apiKey])
                 ->attach('file', $handle, $upload->original_name)
-                ->post($apiBaseUrl . '/predict-file');
+                ->post($apiBaseUrl.'/predict-file');
         } catch (ConnectionException $exception) {
             return $this->markScanAsFailed(
                 $scanJob,
                 $upload,
-                'Flask ML API belum bisa dihubungi. Pastikan service berjalan di ' . $apiBaseUrl . '.'
+                'Flask ML API belum bisa dihubungi. Pastikan service berjalan di '.$apiBaseUrl.'.'
             );
         } finally {
             if (is_resource($handle)) {
@@ -141,7 +141,7 @@ class ScanJobController extends Controller
             'status' => 'Selesai',
             'error_message' => null,
             'summary' => $summary,
-            'results' => $results->take(100)->values()->all(),
+            'results' => $results->values()->all(),
         ]);
 
         $upload->update(['status' => 'processed']);
