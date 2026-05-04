@@ -3,23 +3,8 @@
 
 @section('page')
     @php
-        $history = session('scan_history', []);
-
-        if (empty($history)) {
-            $history = [[
-                'processed_at' => '23/04/2026 20:29',
-                'file_name' => 'conn.log.labeled_cleaned.xlsx',
-                'total' => 23145,
-                'benign' => 1923,
-                'malicious' => 21222,
-                'benign_percent' => 8.31,
-                'malicious_percent' => 91.69,
-                'average_confidence' => 0,
-                'status' => 'Selesai',
-            ]];
-        }
-
-        $latest = $history[0];
+        $history = collect($history ?? []);
+        $latest = $history->first();
         $formatNumber = fn ($value) => number_format((float) $value, 0, ',', '.');
         $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
     @endphp
@@ -67,15 +52,15 @@
                     <div class="flex-1 space-y-2 text-sm">
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-muted">Total Upload</span>
-                            <span class="font-semibold">{{ count($history) }}</span>
+                            <span class="font-semibold">{{ $history->count() }}</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-muted">Data Terakhir</span>
-                            <span class="font-semibold">{{ $formatNumber($latest['total']) }}</span>
+                            <span class="font-semibold">{{ $formatNumber($latest['total'] ?? 0) }}</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-muted">Malicious Terakhir</span>
-                            <span class="font-semibold">{{ $formatPercent($latest['malicious_percent']) }}%</span>
+                            <span class="font-semibold">{{ $formatPercent($latest['malicious_percent'] ?? 0) }}%</span>
                         </div>
                     </div>
                 </div>
@@ -98,7 +83,10 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-app">
-                        @foreach ($history as $item)
+                        @forelse ($history as $item)
+                            @php
+                                $status = $item['status'] ?? '-';
+                            @endphp
                             <tr class="hover:bg-surface2/50">
                                 <td class="px-4 py-3">{{ $loop->iteration }}</td>
                                 <td class="px-4 py-3 text-muted whitespace-nowrap">{{ $item['processed_at'] }}</td>
@@ -108,12 +96,23 @@
                                 <td class="px-4 py-3 text-muted">{{ $formatNumber($item['malicious']) }}</td>
                                 <td class="px-4 py-3 text-muted">{{ $formatPercent($item['average_confidence']) }}%</td>
                                 <td class="px-4 py-3">
-                                    <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
-                                        {{ $item['status'] }}
+                                    <span
+                                        @class([
+                                            'px-3 py-1 rounded-full text-xs font-semibold',
+                                            'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $status === 'Selesai',
+                                            'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $status === 'Gagal',
+                                            'bg-[rgba(251,191,36,0.18)] text-[color:var(--warning)]' => ! in_array($status, ['Selesai', 'Gagal'], true),
+                                        ])
+                                    >
+                                        {{ $status }}
                                     </span>
                                 </td>
                             </tr>
-                        @endforeach
+                        @empty
+                            <tr>
+                                <td class="px-4 py-4 text-muted" colspan="8">Belum ada riwayat proses deteksi di database.</td>
+                            </tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>

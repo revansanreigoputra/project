@@ -5,48 +5,94 @@
     <div
         class="rounded-3xl bg-surface shadow-soft p-6"
         x-data="{
-            fileName: @js($prediction['file_name'] ?? ''),
+            fileName: '',
+            uploadId: null,
+            uploadUrl: @js(route('scan.upload')),
+            csrfToken: @js(csrf_token()),
             errorMessage: '',
+            uploadMessage: '',
             isDragging: false,
+            isUploading: false,
             isProcessing: false,
             chooseFile() {
                 this.$refs.csvFile.click();
             },
-            setFile(files) {
+            async setFile(files) {
                 const file = files && files.length ? files[0] : null;
 
                 if (!file) {
                     return;
                 }
 
-                const valid = file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.xlsx');
+                const lowerName = file.name.toLowerCase();
+                const valid = lowerName.endsWith('.csv') || lowerName.endsWith('.txt') || lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls');
 
                 if (!valid) {
                     this.fileName = '';
-                    this.errorMessage = 'File harus berformat CSV, XLSX, atau XLS';
+                    this.uploadId = null;
+                    this.uploadMessage = '';
+                    this.errorMessage = 'File harus berformat CSV, TXT, XLSX, atau XLS';
                     this.$refs.csvFile.value = '';
                     return;
                 }
 
                 this.fileName = file.name;
+                this.uploadId = null;
+                this.uploadMessage = 'Menyimpan file ke database...';
                 this.errorMessage = '';
+                await this.uploadFile(file);
             },
-            dropFile(event) {
+            async uploadFile(file) {
+                this.isUploading = true;
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                try {
+                    const response = await fetch(this.uploadUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': this.csrfToken,
+                        },
+                        body: formData,
+                    });
+                    const data = await response.json().catch(() => ({}));
+
+                    if (!response.ok) {
+                        const firstFileError = data.errors && data.errors.file ? data.errors.file[0] : null;
+                        throw new Error(firstFileError || data.message || 'File gagal disimpan ke database');
+                    }
+
+                    this.uploadId = data.id;
+                    this.uploadMessage = data.message || 'File tersimpan di database.';
+                } catch (error) {
+                    this.fileName = '';
+                    this.uploadId = null;
+                    this.uploadMessage = '';
+                    this.errorMessage = error.message || 'File gagal disimpan ke database';
+                    this.$refs.csvFile.value = '';
+                } finally {
+                    this.isUploading = false;
+                }
+            },
+            async dropFile(event) {
                 this.isDragging = false;
                 const files = event.dataTransfer.files;
 
-                this.setFile(files);
-
-                if (files.length && !this.errorMessage) {
+                if (files.length) {
                     const transfer = new DataTransfer();
                     transfer.items.add(files[0]);
                     this.$refs.csvFile.files = transfer.files;
                 }
+
+                await this.setFile(files);
             }
         }"
     >
         <form method="POST" action="{{ route('scan.store') }}" enctype="multipart/form-data" @submit="isProcessing = true">
             @csrf
+            <input type="hidden" name="scan_upload_id" :value="uploadId || ''">
 
             <div class="grid gap-6 lg:grid-cols-12">
             {{-- Upload Area --}}
@@ -62,11 +108,13 @@
                 >
                     <div class="text-center">
                         <x-lucide-cloud-upload class="h-14 w-14 mx-auto text-muted mb-3" />
-                        <div class="text-sm font-semibold">Upload File CSV / XLSX</div>
+                        <div class="text-sm font-semibold">Upload File CSV / TXT / XLSX / XLS</div>
                         <div class="text-xs text-muted mt-1" x-show="!fileName && !errorMessage">
                             Seret dan lepas file di sini atau pilih file secara manual
                         </div>
                         <div class="text-xs text-primary mt-1 font-semibold" x-show="fileName" x-text="'File dipilih: ' + fileName"></div>
+                        <div class="text-xs text-muted mt-1 font-semibold" x-show="isUploading" x-text="uploadMessage"></div>
+                        <div class="text-xs text-[color:var(--accent)] mt-1 font-semibold" x-show="uploadId && !isUploading" x-text="uploadMessage"></div>
                         <div class="text-xs text-[color:var(--danger)] mt-1 font-semibold" x-show="errorMessage" x-text="errorMessage"></div>
                         @if (isset($errors) && $errors->has('file'))
                             <div class="text-xs text-[color:var(--danger)] mt-1 font-semibold">{{ $errors->first('file') }}</div>
@@ -77,7 +125,8 @@
                 <input
                     type="file"
                     name="file"
-                    accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+                    :name="uploadId ? null : 'file'"
+                    accept=".csv,.txt,.xlsx,.xls,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                     class="hidden"
                     x-ref="csvFile"
                     @change="setFile($event.target.files)"
@@ -92,7 +141,7 @@
                     </button>
                     <button
                         type="submit"
-                        :disabled="!fileName || isProcessing"
+                        :disabled="!fileName || isUploading || isProcessing"
                         class="px-6 py-2 rounded-xl border border-app text-sm font-semibold hover:bg-surface2 transition-colors disabled:cursor-not-allowed disabled:opacity-60">
                         <span x-show="!isProcessing">Proses Deteksi</span>
                         <span x-show="isProcessing">Memproses...</span>
@@ -109,14 +158,14 @@
                         <div class="grid grid-cols-[88px_1fr] gap-3">
                             <div class="text-muted">Status</div>
                             <div class="font-semibold">
-                                : <span x-show="isProcessing">Memproses</span><span x-show="!isProcessing">{{ isset($prediction) ? 'Selesai' : 'Menunggu' }}</span>
+                                : <span x-show="isUploading">Menyimpan</span><span x-show="!isUploading && isProcessing">Memproses</span><span x-show="!isUploading && !isProcessing">{{ isset($prediction) ? 'Selesai' : 'Menunggu' }}</span>
                             </div>
                         </div>
 
                         <div class="grid grid-cols-[88px_1fr] gap-3">
                             <div class="text-muted">Progress</div>
                             <div class="font-semibold">
-                                : <span x-show="isProcessing">50%</span><span x-show="!isProcessing">{{ isset($prediction) ? '100%' : '0%' }}</span>
+                                : <span x-show="isUploading">25%</span><span x-show="!isUploading && isProcessing">50%</span><span x-show="!isUploading && !isProcessing">{{ isset($prediction) ? '100%' : '0%' }}</span>
                             </div>
                         </div>
 
@@ -125,7 +174,7 @@
                             <div class="w-full bg-app rounded-full h-2.5">
                                 <div
                                     class="bg-primary h-2.5 rounded-full transition-all"
-                                    :style="isProcessing ? 'width: 50%' : 'width: {{ isset($prediction) ? '100' : '0' }}%'"
+                                    :style="isUploading ? 'width: 25%' : (isProcessing ? 'width: 50%' : 'width: {{ isset($prediction) ? '100' : '0' }}%')"
                                 ></div>
                             </div>
                         </div>
@@ -133,7 +182,7 @@
                         <div class="grid grid-cols-[88px_1fr] gap-3">
                             <div class="text-muted">Keterangan</div>
                             <div class="font-semibold">
-                                : <span x-show="isProcessing">Mengirim file ke Flask ML API</span><span x-show="!isProcessing">{{ isset($prediction) ? 'Prediksi ' . number_format($prediction['total'], 0, ',', '.') . ' baris berhasil' : 'Dataset contoh 23.145 baris' }}</span>
+                                : <span x-show="isUploading">Menyimpan file upload</span><span x-show="!isUploading && isProcessing">Mengirim file ke Flask ML API</span><span x-show="!isUploading && !isProcessing">{{ isset($prediction) ? 'Prediksi ' . number_format($prediction['total'], 0, ',', '.') . ' baris berhasil' : 'Belum ada proses deteksi' }}</span>
                             </div>
                         </div>
                     </div>

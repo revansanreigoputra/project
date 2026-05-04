@@ -3,17 +3,17 @@
 
 @section('page')
   @php
-    $prediction = session('last_prediction');
+    $prediction = $prediction ?? null;
     $summary = $prediction['summary'] ?? [
-      'benign' => 1923,
-      'malicious' => 21222,
-      'benign_percent' => 8.31,
-      'malicious_percent' => 91.69,
+      'benign' => 0,
+      'malicious' => 0,
+      'benign_percent' => 0,
+      'malicious_percent' => 0,
       'average_confidence' => 0,
     ];
-    $total = $prediction['total'] ?? 23145;
-    $fileName = $prediction['file_name'] ?? 'conn.log.labeled_cleaned.xlsx';
-    $processedAt = $prediction['processed_at'] ?? '23/04/2026 20:29';
+    $total = $prediction['total'] ?? 0;
+    $fileName = $prediction['file_name'] ?? 'Belum ada file diproses';
+    $processedAt = $prediction['processed_at'] ?? '-';
     $benign = (int) ($summary['benign'] ?? 0);
     $malicious = (int) ($summary['malicious'] ?? 0);
     $benignPercent = (float) ($summary['benign_percent'] ?? 0);
@@ -120,9 +120,9 @@
     </div>
 
     <div class="rounded-3xl bg-surface shadow-soft p-6">
-      <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+        <div class="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
         <div class="text-sm font-semibold">Hasil Prediksi Terbaru</div>
-        <div class="text-xs text-muted">{{ $prediction ? 'Dari upload terakhir' : 'Belum ada upload baru, menampilkan ringkasan dataset contoh' }}</div>
+        <div class="text-xs text-muted">{{ $prediction ? 'Dari proses deteksi terakhir' : 'Belum ada hasil deteksi di database' }}</div>
       </div>
 
       <div class="mt-5 overflow-x-auto rounded-2xl border border-app">

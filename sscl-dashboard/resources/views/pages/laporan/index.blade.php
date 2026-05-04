@@ -3,16 +3,16 @@
 
 @section('page')
     @php
-        $prediction = session('last_prediction');
+        $prediction = $prediction ?? null;
         $summary = $prediction['summary'] ?? [
-            'benign' => 1923,
-            'malicious' => 21222,
-            'benign_percent' => 8.31,
-            'malicious_percent' => 91.69,
+            'benign' => 0,
+            'malicious' => 0,
+            'benign_percent' => 0,
+            'malicious_percent' => 0,
             'average_confidence' => 0,
         ];
-        $total = $prediction['total'] ?? 23145;
-        $fileName = $prediction['file_name'] ?? 'conn.log.labeled_cleaned.xlsx';
+        $total = $prediction['total'] ?? 0;
+        $fileName = $prediction['file_name'] ?? 'Belum ada file diproses';
         $benign = (int) ($summary['benign'] ?? 0);
         $malicious = (int) ($summary['malicious'] ?? 0);
         $benignPercent = (float) ($summary['benign_percent'] ?? 0);
@@ -30,7 +30,7 @@
         $analysis = [
             ['category' => 'Benign', 'total' => $formatNumber($benign), 'percentage' => $formatPercent($benignPercent) . '%'],
             ['category' => 'Malicious', 'total' => $formatNumber($malicious), 'percentage' => $formatPercent($maliciousPercent) . '%'],
-            ['category' => 'Total', 'total' => $formatNumber($total), 'percentage' => '100%'],
+            ['category' => 'Total', 'total' => $formatNumber($total), 'percentage' => $total > 0 ? '100%' : '0%'],
         ];
     @endphp
 
