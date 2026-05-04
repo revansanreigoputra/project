@@ -71,12 +71,29 @@ class ScanJobController extends Controller
 
         $prediction = [
             'file_name' => $file->getClientOriginalName(),
+            'processed_at' => now('Asia/Jakarta')->format('d/m/Y H:i'),
             'total' => (int) ($payload['total'] ?? $results->count()),
             'summary' => $summary,
             'results' => $results->take(100)->values()->all(),
         ];
 
-        session(['last_prediction' => $prediction]);
+        $history = session('scan_history', []);
+        array_unshift($history, [
+            'file_name' => $prediction['file_name'],
+            'processed_at' => $prediction['processed_at'],
+            'total' => $prediction['total'],
+            'benign' => $summary['benign'],
+            'malicious' => $summary['malicious'],
+            'benign_percent' => $summary['benign_percent'],
+            'malicious_percent' => $summary['malicious_percent'],
+            'average_confidence' => $summary['average_confidence'],
+            'status' => 'Selesai',
+        ]);
+
+        session([
+            'last_prediction' => $prediction,
+            'scan_history' => array_slice($history, 0, 10),
+        ]);
 
         return view('pages.scan.index', [
             'prediction' => $prediction,
