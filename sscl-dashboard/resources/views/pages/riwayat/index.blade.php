@@ -3,13 +3,16 @@
 
 @section('page')
     @php
-        $history = collect($history ?? []);
+        $historyItems = collect(is_object($history ?? null) && method_exists($history, 'items') ? $history->items() : ($history ?? []));
         $filters = array_merge([
+            'search' => '',
             'start_date' => '',
             'end_date' => '',
             'detection_status' => 'all',
+            'per_page' => 10,
         ], $filters ?? []);
-        $latest = $history->first();
+        $perPageOptions = $perPageOptions ?? [10, 25, 50];
+        $latest = $historyItems->first();
         $formatNumber = fn ($value) => number_format((float) $value, 0, ',', '.');
         $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
         $formatFileSize = function ($bytes) {
@@ -44,52 +47,84 @@
             <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-8">
                 <div class="text-sm font-semibold">Filter Riwayat</div>
 
-                <form method="GET" action="{{ route('riwayat.index') }}" class="mt-4 grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto_auto] md:items-end">
-                    <label class="block">
-                        <span class="text-xs text-muted">Dari tanggal</span>
-                        <input
-                            type="date"
-                            name="start_date"
-                            value="{{ $filters['start_date'] }}"
-                            class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
-                        >
-                    </label>
+                <form method="GET" action="{{ route('riwayat.index') }}" class="mt-5 space-y-4">
+                    <div class="grid gap-4 xl:grid-cols-12">
+                        <label class="block xl:col-span-8">
+                            <span class="text-xs text-muted">Cari data</span>
+                            <div class="relative mt-2">
+                                <x-lucide-search class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                                <input
+                                    type="search"
+                                    name="search"
+                                    value="{{ $filters['search'] }}"
+                                    placeholder="Nama file atau status"
+                                    class="w-full rounded-2xl border border-app bg-surface2 py-3 pl-11 pr-4 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                                >
+                            </div>
+                        </label>
 
-                    <label class="block">
-                        <span class="text-xs text-muted">Sampai tanggal</span>
-                        <input
-                            type="date"
-                            name="end_date"
-                            value="{{ $filters['end_date'] }}"
-                            class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
-                        >
-                    </label>
+                        <label class="block xl:col-span-4">
+                            <span class="text-xs text-muted">Status data</span>
+                            <select
+                                name="detection_status"
+                                class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                            >
+                                <option value="all" @selected($filters['detection_status'] === 'all')>Semua Data</option>
+                                <option value="detected" @selected($filters['detection_status'] === 'detected')>Sudah Dideteksi</option>
+                                <option value="undetected" @selected($filters['detection_status'] === 'undetected')>Belum Dideteksi</option>
+                            </select>
+                        </label>
+                    </div>
 
-                    <label class="block">
-                        <span class="text-xs text-muted">Status data</span>
-                        <select
-                            name="detection_status"
-                            class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
-                        >
-                            <option value="all" @selected($filters['detection_status'] === 'all')>Semua Data</option>
-                            <option value="detected" @selected($filters['detection_status'] === 'detected')>Sudah Dideteksi</option>
-                            <option value="undetected" @selected($filters['detection_status'] === 'undetected')>Belum Dideteksi</option>
-                        </select>
-                    </label>
+                    <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-12 xl:items-end">
+                        <label class="block xl:col-span-3">
+                            <span class="text-xs text-muted">Dari tanggal</span>
+                            <input
+                                type="date"
+                                name="start_date"
+                                value="{{ $filters['start_date'] }}"
+                                class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                            >
+                        </label>
 
-                    <button
-                        type="submit"
-                        class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity">
-                        <x-lucide-filter class="h-4 w-4" />
-                        Terapkan
-                    </button>
+                        <label class="block xl:col-span-3">
+                            <span class="text-xs text-muted">Sampai tanggal</span>
+                            <input
+                                type="date"
+                                name="end_date"
+                                value="{{ $filters['end_date'] }}"
+                                class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                            >
+                        </label>
 
-                    <a
-                        href="{{ route('riwayat.index') }}"
-                        class="inline-flex items-center justify-center gap-2 rounded-2xl border border-app px-5 py-3 text-sm font-semibold hover:bg-surface2 transition-colors">
-                        <x-lucide-rotate-ccw class="h-4 w-4" />
-                        Reset
-                    </a>
+                        <label class="block xl:col-span-2">
+                            <span class="text-xs text-muted">Tampil</span>
+                            <select
+                                name="per_page"
+                                class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                            >
+                                @foreach ($perPageOptions as $option)
+                                    <option value="{{ $option }}" @selected((int) $filters['per_page'] === (int) $option)>{{ $option }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+
+                        <div class="grid grid-cols-2 gap-3 md:col-span-2 xl:col-span-4">
+                            <button
+                                type="submit"
+                                class="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-white hover:opacity-90 transition-opacity">
+                                <x-lucide-filter class="h-4 w-4" />
+                                Terapkan
+                            </button>
+
+                            <a
+                                href="{{ route('riwayat.index') }}"
+                                class="inline-flex items-center justify-center gap-2 rounded-2xl border border-app px-5 py-3 text-sm font-semibold hover:bg-surface2 transition-colors">
+                                <x-lucide-rotate-ccw class="h-4 w-4" />
+                                Reset
+                            </a>
+                        </div>
+                    </div>
                 </form>
 
                 @error('end_date')
@@ -108,15 +143,15 @@
                     <div class="flex-1 space-y-2 text-sm">
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-muted">Total Upload</span>
-                            <span class="font-semibold">{{ $formatNumber($totalUploads ?? $history->count()) }}</span>
+                            <span class="font-semibold">{{ $formatNumber($totalUploads ?? $historyItems->count()) }}</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <span class="text-muted">Data Terakhir</span>
                             <span class="font-semibold">{{ $formatNumber($latest['total'] ?? 0) }}</span>
                         </div>
                         <div class="flex items-center justify-between gap-3">
-                            <span class="text-muted">Malicious Terakhir</span>
-                            <span class="font-semibold">{{ $formatPercent($latest['malicious_percent'] ?? 0) }}%</span>
+                            <span class="text-muted">Malware Terakhir</span>
+                            <span class="font-semibold">{{ $formatPercent($latest['malware_percent'] ?? 0) }}%</span>
                         </div>
                     </div>
                 </div>
@@ -124,25 +159,25 @@
         </div>
 
         <div class="rounded-3xl bg-surface shadow-soft p-6">
-            <div class="overflow-hidden rounded-2xl border border-app">
+            <div class="max-h-[560px] overflow-auto rounded-2xl border border-app">
                 <table class="w-full table-fixed text-sm">
-                    <thead class="bg-surface2 text-muted">
+                    <thead class="sticky top-0 z-10 bg-surface2 text-muted shadow-[0_1px_0_var(--border)]">
                         <tr class="border-b border-app">
-                            <th class="hidden w-14 px-4 py-3 text-center font-medium sm:table-cell">No</th>
-                            <th class="px-4 py-3 text-center font-medium">Data Upload</th>
-                            <th class="hidden w-[28%] px-4 py-3 text-left font-medium lg:table-cell">Ringkasan Deteksi</th>
-                            <th class="w-28 px-4 py-3 text-left font-medium md:w-36">Status</th>
-                            <th class="w-24 px-4 py-3 text-center font-medium md:w-40 ">Aksi</th>
+                            <th class="hidden w-14 px-3 py-2.5 text-center font-medium sm:table-cell">No</th>
+                            <th class="px-3 py-2.5 text-left font-medium">Data Upload</th>
+                            <th class="hidden w-[30%] px-3 py-2.5 text-left font-medium lg:table-cell">Ringkasan Deteksi</th>
+                            <th class="w-28 px-3 py-2.5 text-left font-medium md:w-36">Status</th>
+                            <th class="w-24 px-3 py-2.5 text-center font-medium md:w-36">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-app">
-                        @forelse ($history as $item)
+                        @forelse ($historyItems as $item)
                             @php
                                 $status = $item['status'] ?? '-';
                             @endphp
                             <tr class="hover:bg-surface2/50">
-                                <td class="hidden px-4 py-4 align-top sm:table-cell">{{ $loop->iteration }}</td>
-                                <td class="min-w-0 px-4 py-4 align-top">
+                                <td class="hidden px-3 py-3 text-center align-top sm:table-cell">{{ $history instanceof \Illuminate\Contracts\Pagination\Paginator ? $history->firstItem() + $loop->index : $loop->iteration }}</td>
+                                <td class="min-w-0 px-3 py-3 align-top">
                                     <div class="min-w-0">
                                         <div class="truncate font-semibold" title="{{ $item['file_name'] }}">{{ $item['file_name'] }}</div>
                                         <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
@@ -152,11 +187,11 @@
                                         </div>
                                         <div class="mt-2 grid gap-1 text-xs text-muted lg:hidden">
                                             <span>Total: <span class="font-semibold text-app">{{ $formatNumber($item['total']) }}</span></span>
-                                            <span>Malicious: <span class="font-semibold text-app">{{ $formatNumber($item['malicious']) }} / {{ $formatPercent($item['malicious_percent']) }}%</span></span>
+                                            <span>Malware: <span class="font-semibold text-app">{{ $formatNumber($item['malware']) }} / {{ $formatPercent($item['malware_percent']) }}%</span></span>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="hidden px-4 py-4 align-top lg:table-cell">
+                                <td class="hidden px-3 py-3 align-top lg:table-cell">
                                     <div class="grid grid-cols-2 gap-2 text-xs">
                                         <div>
                                             <div class="text-muted">Total</div>
@@ -167,16 +202,16 @@
                                             <div class="font-semibold">{{ $formatPercent($item['average_confidence']) }}%</div>
                                         </div>
                                         <div>
-                                            <div class="text-muted">Benign</div>
-                                            <div class="font-semibold">{{ $formatNumber($item['benign']) }}</div>
+                                            <div class="text-muted">Normal</div>
+                                            <div class="font-semibold">{{ $formatNumber($item['normal']) }}</div>
                                         </div>
                                         <div>
-                                            <div class="text-muted">Malicious</div>
-                                            <div class="font-semibold">{{ $formatNumber($item['malicious']) }}</div>
+                                            <div class="text-muted">Malware</div>
+                                            <div class="font-semibold">{{ $formatNumber($item['malware']) }}</div>
                                         </div>
                                     </div>
                                 </td>
-                                <td class="px-4 py-3">
+                                <td class="px-3 py-3">
                                     <span
                                         @class([
                                             'px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap',
@@ -188,7 +223,7 @@
                                         {{ $status }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-3 align-top">
+                                <td class="px-3 py-3 align-top">
                                     <div class="flex items-center justify-end gap-2">
                                         <a
                                             href="{{ route('riwayat.show', $item['upload_id']) }}"
@@ -213,12 +248,69 @@
                             </tr>
                         @empty
                             <tr>
-                                <td class="px-4 py-4 text-muted" colspan="5">Belum ada riwayat upload atau proses deteksi di database.</td>
+                                <td class="px-4 py-4 text-muted" colspan="5">Belum ada riwayat upload atau proses deteksi yang sesuai filter.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+
+            @if (is_object($history ?? null) && method_exists($history, 'hasPages'))
+                <div class="mt-4 flex flex-col gap-3 text-sm text-muted md:flex-row md:items-center md:justify-between">
+                    <div>
+                        @if (method_exists($history, 'total') && $history->total() > 0)
+                            Menampilkan {{ $formatNumber($history->firstItem()) }}-{{ $formatNumber($history->lastItem()) }}
+                            dari {{ $formatNumber($history->total()) }} data
+                        @else
+                            Tidak ada data yang cocok dengan filter.
+                        @endif
+                    </div>
+
+                    @if ($history->hasPages())
+                        @php
+                            $currentPage = $history->currentPage();
+                            $lastPage = method_exists($history, 'lastPage') ? $history->lastPage() : $currentPage;
+                            $startPage = max(1, $currentPage - 2);
+                            $endPage = min($lastPage, $currentPage + 2);
+                        @endphp
+
+                        <div class="flex flex-wrap items-center gap-2">
+                            @if ($history->onFirstPage())
+                                <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-app opacity-40">
+                                    <x-lucide-chevron-left class="h-4 w-4" />
+                                </span>
+                            @else
+                                <a href="{{ $history->previousPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-app hover:bg-surface2 transition-colors">
+                                    <x-lucide-chevron-left class="h-4 w-4" />
+                                </a>
+                            @endif
+
+                            @for ($page = $startPage; $page <= $endPage; $page++)
+                                <a
+                                    href="{{ $history->url($page) }}"
+                                    @class([
+                                        'inline-flex h-10 min-w-[2.5rem] items-center justify-center rounded-xl border px-3 font-semibold transition-colors',
+                                        'border-transparent bg-primary text-white' => $page === $currentPage,
+                                        'border-app hover:bg-surface2' => $page !== $currentPage,
+                                    ])
+                                >
+                                    {{ $page }}
+                                </a>
+                            @endfor
+
+                            @if ($history->hasMorePages())
+                                <a href="{{ $history->nextPageUrl() }}" class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-app hover:bg-surface2 transition-colors">
+                                    <x-lucide-chevron-right class="h-4 w-4" />
+                                </a>
+                            @else
+                                <span class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-app opacity-40">
+                                    <x-lucide-chevron-right class="h-4 w-4" />
+                                </span>
+                            @endif
+                        </div>
+                    @endif
+                </div>
+            @endif
         </div>
 
         <div

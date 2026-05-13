@@ -5,33 +5,48 @@
     @php
         $prediction = $prediction ?? null;
         $summary = $prediction['summary'] ?? [
-            'benign' => 0,
-            'malicious' => 0,
-            'benign_percent' => 0,
-            'malicious_percent' => 0,
+            'normal' => 0,
+            'malware' => 0,
+            'normal_percent' => 0,
+            'malware_percent' => 0,
             'average_confidence' => 0,
+            'labels' => [],
         ];
         $total = $prediction['total'] ?? 0;
         $fileName = $prediction['file_name'] ?? 'Belum ada file diproses';
-        $benign = (int) ($summary['benign'] ?? 0);
-        $malicious = (int) ($summary['malicious'] ?? 0);
-        $benignPercent = (float) ($summary['benign_percent'] ?? 0);
-        $maliciousPercent = (float) ($summary['malicious_percent'] ?? 0);
+        $normal = (int) ($summary['normal'] ?? 0);
+        $malware = (int) ($summary['malware'] ?? 0);
+        $normalPercent = (float) ($summary['normal_percent'] ?? 0);
+        $malwarePercent = (float) ($summary['malware_percent'] ?? 0);
         $avgConfidence = (float) ($summary['average_confidence'] ?? 0);
-        $maxLabelCount = max($benign, $malicious, 1);
         $formatNumber = fn ($value) => number_format((float) $value, 0, ',', '.');
         $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
+        $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+        $labelCounts = collect($summary['labels'] ?? [])->whenEmpty(fn ($items) => collect([
+            'Normal' => $normal,
+            'Malware' => $malware,
+        ])->filter());
+        $maxLabelCount = max($labelCounts->max() ?: 0, 1);
 
-        $labelBars = [
-            ['label' => 'Benign', 'value' => $formatNumber($benign), 'height' => max(8, round(($benign / $maxLabelCount) * 88)), 'tone' => 'accent'],
-            ['label' => 'Malicious', 'value' => $formatNumber($malicious), 'height' => max(8, round(($malicious / $maxLabelCount) * 88)), 'tone' => 'danger'],
-        ];
+        $labelBars = $labelCounts
+            ->sortByDesc(fn ($count, $label) => $label === 'Normal' ? PHP_INT_MAX : $count)
+            ->take(7)
+            ->map(fn ($count, $label) => [
+                'label' => $label,
+                'value' => $formatNumber($count),
+                'height' => max(8, round(((int) $count / $maxLabelCount) * 88)),
+                'tone' => $toneForLabel($label),
+            ])
+            ->values();
 
-        $analysis = [
-            ['category' => 'Benign', 'total' => $formatNumber($benign), 'percentage' => $formatPercent($benignPercent) . '%'],
-            ['category' => 'Malicious', 'total' => $formatNumber($malicious), 'percentage' => $formatPercent($maliciousPercent) . '%'],
-            ['category' => 'Total', 'total' => $formatNumber($total), 'percentage' => $total > 0 ? '100%' : '0%'],
-        ];
+        $analysis = $labelCounts
+            ->map(fn ($count, $label) => [
+                'category' => $label,
+                'total' => $formatNumber($count),
+                'percentage' => $total > 0 ? $formatPercent(((int) $count / $total) * 100) . '%' : '0%',
+            ])
+            ->values()
+            ->push(['category' => 'Total', 'total' => $formatNumber($total), 'percentage' => $total > 0 ? '100%' : '0%']);
     @endphp
 
     <div class="space-y-6">
@@ -49,15 +64,15 @@
                     </div>
 
                     <div class="rounded-2xl bg-surface2 border border-app p-4">
-                        <div class="text-xs text-muted">Total Benign</div>
-                        <div class="mt-2 text-2xl font-semibold">{{ $formatNumber($benign) }}</div>
-                        <div class="text-xs text-muted">({{ $formatPercent($benignPercent) }}%)</div>
+                        <div class="text-xs text-muted">Total Normal</div>
+                        <div class="mt-2 text-2xl font-semibold">{{ $formatNumber($normal) }}</div>
+                        <div class="text-xs text-muted">({{ $formatPercent($normalPercent) }}%)</div>
                     </div>
 
                     <div class="rounded-2xl bg-surface2 border border-app p-4">
-                        <div class="text-xs text-muted">Total Malicious</div>
-                        <div class="mt-2 text-2xl font-semibold">{{ $formatNumber($malicious) }}</div>
-                        <div class="text-xs text-muted">({{ $formatPercent($maliciousPercent) }}%)</div>
+                        <div class="text-xs text-muted">Total Malware</div>
+                        <div class="mt-2 text-2xl font-semibold">{{ $formatNumber($malware) }}</div>
+                        <div class="text-xs text-muted">({{ $formatPercent($malwarePercent) }}%)</div>
                     </div>
 
                     <div class="rounded-2xl bg-surface2 border border-app p-4">
@@ -83,6 +98,7 @@
                                         'w-full rounded-t-2xl',
                                         'bg-[color:var(--accent)]' => $bar['tone'] === 'accent',
                                         'bg-[color:var(--danger)]' => $bar['tone'] === 'danger',
+                                        'bg-[color:var(--warning)]' => $bar['tone'] === 'warning',
                                     ])
                                     style="height: {{ $bar['height'] * 1.2 }}px"
                                 ></div>
@@ -98,21 +114,21 @@
             <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-7">
                 <div class="text-sm font-semibold">Ringkasan Hasil Analisis</div>
 
-                <div class="mt-5 overflow-x-auto rounded-2xl border border-app">
+                <div class="mt-5 max-h-[280px] overflow-auto rounded-2xl border border-app">
                     <table class="w-full text-sm">
-                        <thead class="bg-surface2 text-muted">
+                        <thead class="sticky top-0 z-10 bg-surface2 text-muted">
                             <tr class="border-b border-app">
-                                <th class="px-4 py-3 text-left font-medium">Kategori</th>
-                                <th class="px-4 py-3 text-left font-medium">Jumlah</th>
-                                <th class="px-4 py-3 text-left font-medium">Persentase</th>
+                                <th class="px-3 py-2.5 text-left font-medium">Kategori</th>
+                                <th class="px-3 py-2.5 text-left font-medium">Jumlah</th>
+                                <th class="px-3 py-2.5 text-left font-medium">Persentase</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-app">
                             @foreach ($analysis as $item)
                                 <tr class="hover:bg-surface2/50">
-                                    <td class="px-4 py-3 font-semibold">{{ $item['category'] }}</td>
-                                    <td class="px-4 py-3 text-muted">{{ $item['total'] }}</td>
-                                    <td class="px-4 py-3 text-muted">{{ $item['percentage'] }}</td>
+                                    <td class="px-3 py-2.5 font-semibold">{{ $item['category'] }}</td>
+                                    <td class="px-3 py-2.5 text-muted">{{ $item['total'] }}</td>
+                                    <td class="px-3 py-2.5 text-muted">{{ $item['percentage'] }}</td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -126,7 +142,7 @@
                 <div class="mt-6 flex flex-col items-center gap-5 sm:flex-row">
                     <div
                         class="relative h-40 w-40 shrink-0 rounded-full"
-                        style="background: conic-gradient(var(--accent) 0 {{ $benignPercent }}%, var(--danger) {{ $benignPercent }}% 100%);"
+                        style="background: conic-gradient(var(--accent) 0 {{ $normalPercent }}%, var(--danger) {{ $normalPercent }}% 100%);"
                     >
                         <div class="absolute inset-8 rounded-full bg-surface"></div>
                     </div>
@@ -135,16 +151,16 @@
                         <div class="flex items-center justify-between gap-3">
                             <div class="flex items-center gap-2 text-muted">
                                 <span class="h-3 w-3 rounded-full bg-[color:var(--accent)]"></span>
-                                Benign
+                                Normal
                             </div>
-                            <div class="font-semibold">{{ $formatPercent($benignPercent) }}%</div>
+                            <div class="font-semibold">{{ $formatPercent($normalPercent) }}%</div>
                         </div>
                         <div class="flex items-center justify-between gap-3">
                             <div class="flex items-center gap-2 text-muted">
                                 <span class="h-3 w-3 rounded-full bg-[color:var(--danger)]"></span>
-                                Malicious
+                                Malware
                             </div>
-                            <div class="font-semibold">{{ $formatPercent($maliciousPercent) }}%</div>
+                            <div class="font-semibold">{{ $formatPercent($malwarePercent) }}%</div>
                         </div>
                     </div>
                 </div>
@@ -154,17 +170,28 @@
         <div class="grid gap-4 sm:grid-cols-2">
             <button
                 type="button"
-                class="inline-flex items-center justify-center gap-3 rounded-2xl bg-primary px-6 py-4 text-sm font-semibold text-white hover:opacity-90 transition-opacity">
+                disabled
+                class="inline-flex cursor-not-allowed items-center justify-center gap-3 rounded-2xl bg-primary px-6 py-4 text-sm font-semibold text-white opacity-60">
                 <x-lucide-file-down class="h-5 w-5" />
                 Unduh PDF
             </button>
 
-            <button
-                type="button"
-                class="inline-flex items-center justify-center gap-3 rounded-2xl border border-app px-6 py-4 text-sm font-semibold hover:bg-surface2 transition-colors">
-                <x-lucide-table class="h-5 w-5" />
-                Unduh CSV
-            </button>
+            @if ($prediction && ! empty($prediction['scan_upload_id']))
+                <a
+                    href="{{ route('riwayat.download', ['scanUpload' => $prediction['scan_upload_id'], 'mode' => 'after']) }}"
+                    class="inline-flex items-center justify-center gap-3 rounded-2xl border border-app px-6 py-4 text-sm font-semibold hover:bg-surface2 transition-colors">
+                    <x-lucide-table class="h-5 w-5" />
+                    Unduh CSV
+                </a>
+            @else
+                <button
+                    type="button"
+                    disabled
+                    class="inline-flex cursor-not-allowed items-center justify-center gap-3 rounded-2xl border border-app px-6 py-4 text-sm font-semibold opacity-60">
+                    <x-lucide-table class="h-5 w-5" />
+                    Unduh CSV
+                </button>
+            @endif
         </div>
     </div>
 @endsection

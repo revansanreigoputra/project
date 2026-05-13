@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ScanJob;
+use App\Models\DetectionResult;
 use App\Models\ScanUpload;
+use App\Support\DetectionResultTable;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -17,38 +19,58 @@ class HistoryController extends Controller
     public function index(Request $request)
     {
         $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'detection_status' => ['nullable', 'in:all,detected,undetected'],
+            'per_page' => ['nullable', 'integer', 'in:10,25,50'],
         ]);
 
+        // Filter tanggal memakai zona lokal supaya input date dari UI cocok dengan hari di Indonesia.
         $startAt = filled($filters['start_date'] ?? null)
             ? Carbon::parse($filters['start_date'], 'Asia/Jakarta')->startOfDay()->utc()
             : null;
         $endAt = filled($filters['end_date'] ?? null)
             ? Carbon::parse($filters['end_date'], 'Asia/Jakarta')->endOfDay()->utc()
             : null;
+        $search = trim((string) ($filters['search'] ?? ''));
         $detectionStatus = $filters['detection_status'] ?? 'all';
+        $perPage = in_array((int) ($filters['per_page'] ?? 10), [10, 25, 50], true)
+            ? (int) ($filters['per_page'] ?? 10)
+            : 10;
 
+        // Query ini menjadi sumber tunggal untuk tabel, ringkasan, dan pagination riwayat.
         $query = ScanUpload::with([
-            'scanJobs' => fn ($query) => $query
+            'detectionResults' => fn ($query) => $query
                 ->latest('processed_at')
                 ->latest('id'),
         ])
             ->forUser($request->user())
+            ->when($search !== '', function ($query) use ($search) {
+                $query->where(function ($searchQuery) use ($search) {
+                    $searchQuery
+                        ->where('original_name', 'like', '%'.$search.'%')
+                        ->orWhere('stored_name', 'like', '%'.$search.'%')
+                        ->orWhereHas('detectionResults', function ($resultQuery) use ($search) {
+                            $resultQuery
+                                ->where('file_name', 'like', '%'.$search.'%')
+                                ->orWhere('status', 'like', '%'.$search.'%');
+                        });
+                });
+            })
             ->when($detectionStatus === 'detected', function ($query) {
-                $query->whereHas('scanJobs', fn ($jobQuery) => $jobQuery->completed());
+                $query->whereHas('detectionResults', fn ($resultQuery) => $resultQuery->completed());
             })
             ->when($detectionStatus === 'undetected', function ($query) {
-                $query->whereDoesntHave('scanJobs', fn ($jobQuery) => $jobQuery->completed());
+                $query->whereDoesntHave('detectionResults', fn ($resultQuery) => $resultQuery->completed());
             })
             ->when($startAt || $endAt, function ($query) use ($startAt, $endAt) {
                 $query->where(function ($dateQuery) use ($startAt, $endAt) {
                     $this->applyDateRange($dateQuery, 'created_at', $startAt, $endAt);
-                    $dateQuery->orWhereHas('scanJobs', function ($jobQuery) use ($startAt, $endAt) {
-                        $jobQuery->where(function ($jobDateQuery) use ($startAt, $endAt) {
-                            $this->applyDateRange($jobDateQuery, 'processed_at', $startAt, $endAt);
-                            $jobDateQuery->orWhere(function ($createdAtQuery) use ($startAt, $endAt) {
+                    $dateQuery->orWhereHas('detectionResults', function ($resultQuery) use ($startAt, $endAt) {
+                        $resultQuery->where(function ($resultDateQuery) use ($startAt, $endAt) {
+                            $this->applyDateRange($resultDateQuery, 'processed_at', $startAt, $endAt);
+                            $resultDateQuery->orWhere(function ($createdAtQuery) use ($startAt, $endAt) {
                                 $this->applyDateRange($createdAtQuery, 'created_at', $startAt, $endAt);
                             });
                         });
@@ -58,48 +80,79 @@ class HistoryController extends Controller
 
         $totalUploads = (clone $query)->count();
 
+        // Pagination server-side menjaga tabel tetap ringan walaupun riwayat upload sudah banyak.
         $history = $query
             ->latest('updated_at')
             ->latest('id')
-            ->limit(25)
-            ->get()
-            ->map(fn (ScanUpload $scanUpload) => $this->toHistoryArray($scanUpload));
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn (ScanUpload $scanUpload) => $this->toHistoryArray($scanUpload));
 
         return view('pages.riwayat.index', [
             'history' => $history,
             'filters' => [
+                'search' => $search,
                 'start_date' => $filters['start_date'] ?? '',
                 'end_date' => $filters['end_date'] ?? '',
                 'detection_status' => $detectionStatus,
+                'per_page' => $perPage,
             ],
             'totalUploads' => $totalUploads,
+            'perPageOptions' => [10, 25, 50],
         ]);
     }
 
     public function show(Request $request, ScanUpload $scanUpload)
     {
         $this->ensureUploadBelongsToUser($scanUpload, $request);
+        $filters = $request->validate([
+            'mode' => ['nullable', 'in:before,after'],
+            'after_search' => ['nullable', 'string', 'max:100'],
+            'after_label' => ['nullable', 'string', 'max:100'],
+            'after_per_page' => ['nullable', 'integer', 'in:10,25,50,100'],
+        ]);
 
         $scanUpload->load([
-            'scanJobs' => fn ($query) => $query
+            'detectionResults' => fn ($query) => $query
                 ->latest('processed_at')
                 ->latest('id'),
         ]);
 
-        $mode = $request->query('mode') === 'after' ? 'after' : 'before';
-        $latestScanJob = $scanUpload->scanJobs->first();
-        $completedScanJob = $scanUpload->scanJobs->first(
-            fn (ScanJob $scanJob) => $scanJob->status === 'Selesai'
+        $mode = ($filters['mode'] ?? null) === 'after' ? 'after' : 'before';
+        $latestDetectionResult = $scanUpload->detectionResults->first();
+        $completedDetectionResult = $scanUpload->detectionResults->first(
+            fn (DetectionResult $detectionResult) => $detectionResult->status === 'Selesai'
         );
+        $prediction = $completedDetectionResult?->toPredictionArray();
+        $afterTable = null;
+
+        if ($completedDetectionResult && $prediction && $mode === 'after') {
+            $afterTable = DetectionResultTable::make($completedDetectionResult, [
+                'search' => trim((string) ($filters['after_search'] ?? '')),
+                'label' => $filters['after_label'] ?? 'all',
+                'per_page' => $filters['after_per_page'] ?? 10,
+            ], 'after_page');
+            $prediction['summary'] = $afterTable['summary'];
+        } elseif ($completedDetectionResult && $prediction) {
+            $prediction['summary'] = DetectionResultTable::summary($completedDetectionResult);
+        }
 
         return view('pages.riwayat.show', [
             'scanUpload' => $scanUpload,
-            'latestScanJob' => $latestScanJob,
-            'completedScanJob' => $completedScanJob,
+            'latestDetectionResult' => $latestDetectionResult,
+            'completedDetectionResult' => $completedDetectionResult,
             'historyItem' => $this->toHistoryArray($scanUpload),
             'mode' => $mode,
             'sourcePreview' => $mode === 'before' ? $this->previewUpload($scanUpload) : null,
-            'prediction' => $completedScanJob?->toPredictionArray(),
+            'prediction' => $prediction,
+            'afterResultsPaginator' => $afterTable['paginator'] ?? null,
+            'afterLabelOptions' => $afterTable['label_options'] ?? collect(['Normal']),
+            'afterTableFilters' => [
+                'search' => trim((string) ($filters['after_search'] ?? '')),
+                'label' => $filters['after_label'] ?? 'all',
+                'per_page' => DetectionResultTable::perPage($filters['after_per_page'] ?? null),
+            ],
+            'perPageOptions' => DetectionResultTable::PER_PAGE_OPTIONS,
         ]);
     }
 
@@ -109,13 +162,13 @@ class HistoryController extends Controller
 
         $path = $scanUpload->path;
         $fileName = $scanUpload->original_name;
-        $resultsPaths = $scanUpload->scanJobs()
+        $resultsPaths = $scanUpload->detectionResults()
             ->whereNotNull('results_path')
             ->pluck('results_path')
             ->all();
 
         DB::transaction(function () use ($scanUpload) {
-            $scanUpload->scanJobs()->delete();
+            $scanUpload->detectionResults()->delete();
             $scanUpload->delete();
         });
 
@@ -176,29 +229,44 @@ class HistoryController extends Controller
 
     private function toHistoryArray(ScanUpload $scanUpload): array
     {
-        $latestScanJob = $scanUpload->scanJobs->first();
-        $completedScanJob = $scanUpload->scanJobs->first(
-            fn (ScanJob $scanJob) => $scanJob->status === 'Selesai'
+        $latestDetectionResult = $scanUpload->detectionResults->first();
+        $completedDetectionResult = $scanUpload->detectionResults->first(
+            fn (DetectionResult $detectionResult) => $detectionResult->status === 'Selesai'
         );
-        $displayScanJob = $completedScanJob ?? $latestScanJob;
+        $displayDetectionResult = $completedDetectionResult ?? $latestDetectionResult;
+        $summary = $displayDetectionResult
+            ? DetectionResultTable::summary($displayDetectionResult)
+            : [
+            'normal' => 0,
+            'malware' => 0,
+            'unknown' => 0,
+            'normal_percent' => 0,
+            'malware_percent' => 0,
+            'average_confidence' => 0,
+            'labels' => [],
+            'malware_labels' => [],
+        ];
 
         return [
             'upload_id' => $scanUpload->id,
-            'scan_job_id' => $displayScanJob?->id,
+            'detection_result_id' => $displayDetectionResult?->id,
             'uploaded_at' => $this->formatDateTime($scanUpload->created_at),
-            'processed_at' => $this->formatDateTime($displayScanJob?->processed_at ?? $displayScanJob?->created_at),
+            'processed_at' => $this->formatDateTime($displayDetectionResult?->processed_at ?? $displayDetectionResult?->created_at),
             'file_name' => $scanUpload->original_name,
             'size' => $scanUpload->size,
-            'total' => $displayScanJob?->total ?? 0,
-            'benign' => $displayScanJob?->benign_count ?? 0,
-            'malicious' => $displayScanJob?->malicious_count ?? 0,
-            'benign_percent' => $displayScanJob?->benign_percent ?? 0,
-            'malicious_percent' => $displayScanJob?->malicious_percent ?? 0,
-            'average_confidence' => $displayScanJob?->average_confidence ?? 0,
-            'status' => $this->displayStatus($scanUpload, $displayScanJob),
-            'can_view_after' => (bool) $completedScanJob,
+            'total' => $displayDetectionResult?->total ?? 0,
+            'normal' => $summary['normal'] ?? 0,
+            'malware' => $summary['malware'] ?? 0,
+            'unknown' => $summary['unknown'] ?? 0,
+            'normal_percent' => $summary['normal_percent'] ?? 0,
+            'malware_percent' => $summary['malware_percent'] ?? 0,
+            'average_confidence' => $summary['average_confidence'] ?? $displayDetectionResult?->average_confidence ?? 0,
+            'labels' => $summary['labels'] ?? [],
+            'malware_labels' => $summary['malware_labels'] ?? [],
+            'status' => $this->displayStatus($scanUpload, $displayDetectionResult),
+            'can_view_after' => (bool) $completedDetectionResult,
             'can_download_before' => (bool) $scanUpload->path,
-            'can_download_after' => (bool) $completedScanJob,
+            'can_download_after' => (bool) $completedDetectionResult,
         ];
     }
 
@@ -216,13 +284,13 @@ class HistoryController extends Controller
 
     private function downloadPrediction(ScanUpload $scanUpload)
     {
-        $scanJob = $scanUpload->scanJobs()
+        $detectionResult = $scanUpload->detectionResults()
             ->completed()
             ->latest('processed_at')
             ->latest('id')
             ->first();
 
-        if (! $scanJob) {
+        if (! $detectionResult) {
             return back()
                 ->with('toast_type', 'danger')
                 ->with('toast_title', 'Download Gagal')
@@ -231,24 +299,25 @@ class HistoryController extends Controller
 
         $fileName = $this->downloadFileName($scanUpload, 'hasil-deteksi', 'csv');
 
-        if ($scanJob->results_path && Storage::exists($scanJob->results_path)) {
-            return Storage::download($scanJob->results_path, $fileName, [
+        if ($detectionResult->results_path && Storage::exists($detectionResult->results_path)) {
+            return Storage::download($detectionResult->results_path, $fileName, [
                 'Content-Type' => 'text/csv; charset=UTF-8',
             ]);
         }
 
-        $results = collect($scanJob->results ?? []);
+        $results = collect($detectionResult->results ?? []);
 
         return response()->streamDownload(function () use ($results) {
             $handle = fopen('php://output', 'w');
 
             fwrite($handle, "\xEF\xBB\xBF");
+            $probabilityLabels = $this->probabilityLabels($results);
+
             fputcsv($handle, [
                 'row_id',
                 'label',
                 'confidence_percent',
-                'prob_benign_percent',
-                'prob_malicious_percent',
+                ...array_map(fn (string $label) => 'prob_'.Str::slug($label, '_').'_percent', $probabilityLabels),
             ]);
 
             foreach ($results as $index => $result) {
@@ -256,8 +325,10 @@ class HistoryController extends Controller
                     $result['row'] ?? $index,
                     $result['label'] ?? 'Unknown',
                     $this->csvPercent($result['confidence'] ?? 0),
-                    $this->csvPercent(data_get($result, 'probabilities.Benign', 0)),
-                    $this->csvPercent(data_get($result, 'probabilities.Malicious', 0)),
+                    ...array_map(
+                        fn (string $label) => $this->csvPercent(($result['probabilities'] ?? [])[$label] ?? 0),
+                        $probabilityLabels
+                    ),
                 ]);
             }
 
@@ -280,10 +351,20 @@ class HistoryController extends Controller
         return number_format(((float) $value) * 100, 2, '.', '');
     }
 
-    private function displayStatus(ScanUpload $scanUpload, ?ScanJob $scanJob): string
+    private function probabilityLabels(Collection $results): array
     {
-        if ($scanJob) {
-            return $scanJob->status;
+        return $results
+            ->flatMap(fn (array $result) => array_keys($result['probabilities'] ?? []))
+            ->unique()
+            ->sortBy(fn (string $label) => $label === 'Normal' ? '0' : '1'.$label)
+            ->values()
+            ->all();
+    }
+
+    private function displayStatus(ScanUpload $scanUpload, ?DetectionResult $detectionResult): string
+    {
+        if ($detectionResult) {
+            return $detectionResult->status;
         }
 
         return match ($scanUpload->status) {

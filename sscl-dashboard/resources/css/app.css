@@ -1,3 +1,6 @@
+/* Poppins */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -48,9 +51,6 @@
   --shadow: 0 26px 70px rgba(0, 0, 0, 0.45);
   --ring-track: rgba(235, 239, 245, 0.10);
 }
-
-/* Poppins */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
 /* base */
 html, body { height: 100%; }

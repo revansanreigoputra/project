@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ScanJob;
+use App\Models\DetectionResult;
 use App\Models\ScanUpload;
+use App\Support\DetectionResultTable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -76,7 +77,7 @@ class ScanJobController extends Controller
         $apiKey = (string) config('services.ml_api.key');
         $timeout = (int) config('services.ml_api.timeout', 120);
 
-        $scanJob = ScanJob::create([
+        $detectionResult = DetectionResult::create([
             'user_id' => $request->user()?->getAuthIdentifier(),
             'scan_upload_id' => $upload->id,
             'file_name' => $upload->original_name,
@@ -94,7 +95,7 @@ class ScanJobController extends Controller
 
         if ($handle === false) {
             return $this->markScanAsFailed(
-                $scanJob,
+                $detectionResult,
                 $upload,
                 'File yang sudah diupload tidak ditemukan di storage.'
             );
@@ -107,7 +108,7 @@ class ScanJobController extends Controller
                 ->post($apiBaseUrl.'/predict-file');
         } catch (ConnectionException $exception) {
             return $this->markScanAsFailed(
-                $scanJob,
+                $detectionResult,
                 $upload,
                 'Flask ML API belum bisa dihubungi. Pastikan service berjalan di '.$apiBaseUrl.'.'
             );
@@ -119,7 +120,7 @@ class ScanJobController extends Controller
 
         if ($response->failed()) {
             return $this->markScanAsFailed(
-                $scanJob,
+                $detectionResult,
                 $upload,
                 $response->json('message') ?: 'Prediksi gagal diproses oleh Flask ML API.'
             );
@@ -128,26 +129,26 @@ class ScanJobController extends Controller
         $payload = $response->json();
         $results = collect($payload['results'] ?? []);
         $total = (int) ($payload['total'] ?? $results->count());
-        $summary = $this->summarizePrediction($results, $total);
+        $summary = $this->summarizePrediction($results, $total, $payload);
 
         try {
-            $resultsPath = $this->storePredictionResults($scanJob, $upload, $results);
+            $resultsPath = $this->storePredictionResults($detectionResult, $upload, $results);
         } catch (Throwable $exception) {
             return $this->markScanAsFailed(
-                $scanJob,
+                $detectionResult,
                 $upload,
                 'Hasil deteksi gagal disimpan ke storage.'
             );
         }
 
-        $scanJob->update([
+        $detectionResult->update([
             'processed_at' => now(),
             'total' => $total,
-            'benign_count' => $summary['benign'],
-            'malicious_count' => $summary['malicious'],
+            'normal_count' => $summary['normal'],
+            'malware_count' => $summary['malware'],
             'unknown_count' => $summary['unknown'],
-            'benign_percent' => $summary['benign_percent'],
-            'malicious_percent' => $summary['malicious_percent'],
+            'normal_percent' => $summary['normal_percent'],
+            'malware_percent' => $summary['malware_percent'],
             'average_confidence' => $summary['average_confidence'],
             'status' => 'Selesai',
             'error_message' => null,
@@ -161,37 +162,57 @@ class ScanJobController extends Controller
         return redirect()->route('scan.index');
     }
 
-    private function summarizePrediction(Collection $results, int $total): array
+    private function summarizePrediction(Collection $results, int $total, array $payload = []): array
     {
-        $labels = $results
+        $resultLabels = $results
             ->groupBy(fn (array $result) => $result['label'] ?? 'Unknown')
             ->map(fn (Collection $items) => $items->count())
             ->all();
+        $payloadLabels = collect($payload['summary'] ?? [])
+            ->mapWithKeys(fn ($count, $label) => [(string) $label => (int) $count])
+            ->filter(fn (int $count) => $count > 0)
+            ->all();
+        $labels = $payloadLabels !== [] && (array_sum($payloadLabels) >= $total || $results->count() !== $total)
+            ? $payloadLabels
+            : $resultLabels;
 
         $averageConfidence = $results->avg(fn (array $result) => (float) ($result['confidence'] ?? 0));
+        $normal = (int) ($payload['total_normal'] ?? $labels['Normal'] ?? 0);
+        $unknown = (int) ($labels['Unknown'] ?? 0);
+        $malwareLabels = collect($labels)
+            ->reject(fn ($count, string $label) => in_array($label, ['Normal', 'Unknown'], true))
+            ->all();
+        $malwareFromLabels = (int) array_sum($malwareLabels);
+        $payloadMalware = array_key_exists('total_malware', $payload) ? (int) $payload['total_malware'] : null;
+        $malware = $payloadMalware !== null && ($normal + $malwareFromLabels + $unknown) !== $total
+            ? $payloadMalware
+            : $malwareFromLabels;
 
         return [
-            'benign' => $labels['Benign'] ?? 0,
-            'malicious' => $labels['Malicious'] ?? 0,
-            'unknown' => $labels['Unknown'] ?? 0,
-            'benign_percent' => $total > 0 ? round((($labels['Benign'] ?? 0) / $total) * 100, 2) : 0,
-            'malicious_percent' => $total > 0 ? round((($labels['Malicious'] ?? 0) / $total) * 100, 2) : 0,
+            'normal' => $normal,
+            'malware' => $malware,
+            'unknown' => $unknown,
+            'normal_percent' => $total > 0 ? round(($normal / $total) * 100, 2) : 0,
+            'malware_percent' => $total > 0 ? round(($malware / $total) * 100, 2) : 0,
             'average_confidence' => $averageConfidence ? round($averageConfidence * 100, 2) : 0,
+            'labels' => $labels,
+            'malware_labels' => $malwareLabels,
         ];
     }
 
-    private function storePredictionResults(ScanJob $scanJob, ScanUpload $upload, Collection $results): string
+    private function storePredictionResults(DetectionResult $detectionResult, ScanUpload $upload, Collection $results): string
     {
-        $path = 'scan-results/'.$scanJob->id.'-'.$this->downloadFileName($upload, 'hasil-deteksi', 'csv');
+        $path = 'scan-results/'.$detectionResult->id.'-'.$this->downloadFileName($upload, 'hasil-deteksi', 'csv');
         $stream = fopen('php://temp', 'r+');
 
         fwrite($stream, "\xEF\xBB\xBF");
+        $probabilityLabels = $this->probabilityLabels($results);
+
         fputcsv($stream, [
             'row_id',
             'label',
             'confidence_percent',
-            'prob_benign_percent',
-            'prob_malicious_percent',
+            ...array_map(fn (string $label) => 'prob_'.Str::slug($label, '_').'_percent', $probabilityLabels),
         ]);
 
         foreach ($results as $index => $result) {
@@ -199,8 +220,10 @@ class ScanJobController extends Controller
                 $result['row'] ?? $index,
                 $result['label'] ?? 'Unknown',
                 $this->csvPercent($result['confidence'] ?? 0),
-                $this->csvPercent(data_get($result, 'probabilities.Benign', 0)),
-                $this->csvPercent(data_get($result, 'probabilities.Malicious', 0)),
+                ...array_map(
+                    fn (string $label) => $this->csvPercent(($result['probabilities'] ?? [])[$label] ?? 0),
+                    $probabilityLabels
+                ),
             ]);
         }
 
@@ -230,15 +253,34 @@ class ScanJobController extends Controller
         return number_format(((float) $value) * 100, 2, '.', '');
     }
 
+    private function probabilityLabels(Collection $results): array
+    {
+        $labels = $results
+            ->flatMap(fn (array $result) => array_keys($result['probabilities'] ?? []))
+            ->unique()
+            ->values();
+
+        return $labels
+            ->sortBy(fn (string $label) => $label === 'Normal' ? '0' : '1'.$label)
+            ->values()
+            ->all();
+    }
+
     private function latestPredictionFor(Request $request): ?array
     {
-        return ScanJob::with('scanUpload')
+        $detectionResult = DetectionResult::with('scanUpload')
             ->forUser($request->user())
             ->completed()
             ->latest('processed_at')
             ->latest('id')
-            ->first()
-            ?->toPredictionArray();
+            ->first();
+        $prediction = $detectionResult?->toPredictionArray();
+
+        if ($detectionResult && $prediction) {
+            $prediction['summary'] = DetectionResultTable::summary($detectionResult);
+        }
+
+        return $prediction;
     }
 
     private function persistUpload(UploadedFile $file, ?int $userId): ScanUpload
@@ -282,9 +324,9 @@ class ScanJobController extends Controller
         return $this->persistUpload($validated['file'], $request->user()?->getAuthIdentifier());
     }
 
-    private function markScanAsFailed(ScanJob $scanJob, ScanUpload $upload, string $message): RedirectResponse
+    private function markScanAsFailed(DetectionResult $detectionResult, ScanUpload $upload, string $message): RedirectResponse
     {
-        $scanJob->update([
+        $detectionResult->update([
             'processed_at' => now(),
             'status' => 'Gagal',
             'error_message' => $message,
@@ -300,7 +342,7 @@ class ScanJobController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(ScanJob $scanJob)
+    public function show(DetectionResult $detectionResult)
     {
         //
     }
@@ -308,7 +350,7 @@ class ScanJobController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(ScanJob $scanJob)
+    public function edit(DetectionResult $detectionResult)
     {
         //
     }
@@ -316,7 +358,7 @@ class ScanJobController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, ScanJob $scanJob)
+    public function update(Request $request, DetectionResult $detectionResult)
     {
         //
     }
@@ -324,7 +366,7 @@ class ScanJobController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(ScanJob $scanJob)
+    public function destroy(DetectionResult $detectionResult)
     {
         //
     }

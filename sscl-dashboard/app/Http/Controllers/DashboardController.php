@@ -2,20 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ScanJob;
+use App\Models\DetectionResult;
+use App\Support\DetectionResultTable;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
-        $prediction = ScanJob::with('scanUpload')
+        $detectionResult = DetectionResult::with('scanUpload')
             ->forUser($request->user())
             ->completed()
             ->latest('processed_at')
             ->latest('id')
-            ->first()
-            ?->toPredictionArray();
+            ->first();
+        $prediction = $detectionResult?->toPredictionArray();
+
+        if ($detectionResult && $prediction) {
+            $prediction['summary'] = DetectionResultTable::summary($detectionResult);
+        }
 
         return view('pages.dashboard.index', [
             'prediction' => $prediction,

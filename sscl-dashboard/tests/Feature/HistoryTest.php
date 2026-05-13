@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\ScanJob;
+use App\Models\DetectionResult;
 use App\Models\ScanUpload;
 use App\Models\User;
 use Carbon\Carbon;
@@ -25,14 +25,14 @@ class HistoryTest extends TestCase
             'created_at' => Carbon::parse('2026-05-03 01:00:00', 'UTC'),
             'updated_at' => Carbon::parse('2026-05-03 01:00:00', 'UTC'),
         ])->save();
-        $this->createScanJob($user, $oldUpload, Carbon::parse('2026-05-03 02:00:00', 'UTC'));
+        $this->createDetectionResult($user, $oldUpload, Carbon::parse('2026-05-03 02:00:00', 'UTC'));
 
         $todayUpload = $this->createUpload($user, 'today.csv', 'scan-uploads/today.csv');
         $todayUpload->forceFill([
             'created_at' => Carbon::parse('2026-05-04 01:00:00', 'UTC'),
             'updated_at' => Carbon::parse('2026-05-04 01:00:00', 'UTC'),
         ])->save();
-        $this->createScanJob($user, $todayUpload, Carbon::parse('2026-05-04 02:00:00', 'UTC'));
+        $this->createDetectionResult($user, $todayUpload, Carbon::parse('2026-05-04 02:00:00', 'UTC'));
 
         $response = $this
             ->actingAs($user)
@@ -51,7 +51,7 @@ class HistoryTest extends TestCase
         Storage::fake('local');
 
         $user = User::factory()->create();
-        Storage::put('scan-uploads/source.csv', "source_ip,label\n10.0.0.1,Benign\n");
+        Storage::put('scan-uploads/source.csv', "source_ip,label\n10.0.0.1,Normal\n");
         $upload = $this->createUpload($user, 'source.csv', 'scan-uploads/source.csv');
 
         $response = $this
@@ -63,16 +63,36 @@ class HistoryTest extends TestCase
         $response->assertSee('10.0.0.1');
     }
 
+    public function test_history_index_uses_bottom_pagination(): void
+    {
+        $user = User::factory()->create();
+
+        foreach (range(1, 12) as $index) {
+            $this->createUpload($user, 'history-'.$index.'.csv', 'scan-uploads/history-'.$index.'.csv');
+        }
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('riwayat.index', [
+                'per_page' => 10,
+                'page' => 2,
+            ]));
+
+        $response->assertOk();
+        $response->assertSeeText('Menampilkan 11-12');
+        $response->assertSeeText('dari 12 data');
+    }
+
     public function test_history_delete_removes_upload_jobs_and_file(): void
     {
         Storage::fake('local');
 
         $user = User::factory()->create();
-        Storage::put('scan-uploads/delete.csv', "row,label\n1,Benign\n");
-        Storage::put('scan-results/delete-results.csv', "row_id,label\n1,Benign\n");
+        Storage::put('scan-uploads/delete.csv', "row,label\n1,Normal\n");
+        Storage::put('scan-results/delete-results.csv', "row_id,label\n1,Normal\n");
         $upload = $this->createUpload($user, 'delete.csv', 'scan-uploads/delete.csv');
-        $scanJob = $this->createScanJob($user, $upload, Carbon::parse('2026-05-04 02:00:00', 'UTC'));
-        $scanJob->update(['results_path' => 'scan-results/delete-results.csv']);
+        $detectionResult = $this->createDetectionResult($user, $upload, Carbon::parse('2026-05-04 02:00:00', 'UTC'));
+        $detectionResult->update(['results_path' => 'scan-results/delete-results.csv']);
 
         $response = $this
             ->actingAs($user)
@@ -82,7 +102,7 @@ class HistoryTest extends TestCase
         $response->assertSessionHas('toast_type', 'success');
         $response->assertSessionHas('toast_title', 'Riwayat Terhapus');
         $this->assertDatabaseMissing('scan_uploads', ['id' => $upload->id]);
-        $this->assertDatabaseMissing('scan_jobs', ['id' => $scanJob->id]);
+        $this->assertDatabaseMissing('detection_results', ['id' => $detectionResult->id]);
         Storage::assertMissing('scan-uploads/delete.csv');
         Storage::assertMissing('scan-results/delete-results.csv');
     }
@@ -92,7 +112,7 @@ class HistoryTest extends TestCase
         Storage::fake('local');
 
         $user = User::factory()->create();
-        Storage::put('scan-uploads/source.csv', "source_ip,label\n10.0.0.1,Benign\n");
+        Storage::put('scan-uploads/source.csv', "source_ip,label\n10.0.0.1,Normal\n");
         $upload = $this->createUpload($user, 'source.csv', 'scan-uploads/source.csv');
 
         $response = $this
@@ -107,7 +127,7 @@ class HistoryTest extends TestCase
     {
         $user = User::factory()->create();
         $upload = $this->createUpload($user, 'traffic sample.csv', 'scan-uploads/traffic-sample.csv');
-        $this->createScanJob($user, $upload, Carbon::parse('2026-05-04 02:00:00', 'UTC'));
+        $this->createDetectionResult($user, $upload, Carbon::parse('2026-05-04 02:00:00', 'UTC'));
 
         $response = $this
             ->actingAs($user)
@@ -117,7 +137,7 @@ class HistoryTest extends TestCase
         $response->assertDownload('traffic-sample-hasil-deteksi.csv');
         $downloadContent = $response->streamedContent();
         $this->assertStringContainsString('row_id,label,confidence_percent', $downloadContent);
-        $this->assertStringContainsString('1,Benign,99.00', $downloadContent);
+        $this->assertStringContainsString('1,Normal,99.00', $downloadContent);
     }
 
     public function test_scan_stores_full_prediction_results_for_history_download(): void
@@ -128,11 +148,11 @@ class HistoryTest extends TestCase
         $results = collect(range(1, 105))
             ->map(fn (int $row) => [
                 'row' => $row,
-                'label' => $row === 105 ? 'Malicious' : 'Benign',
+                'label' => $row === 105 ? 'Virus' : 'Normal',
                 'confidence' => 0.9,
                 'probabilities' => [
-                    'Benign' => $row === 105 ? 0.1 : 0.9,
-                    'Malicious' => $row === 105 ? 0.9 : 0.1,
+                    'Normal' => $row === 105 ? 0.1 : 0.9,
+                    'Virus' => $row === 105 ? 0.9 : 0.1,
                 ],
             ])
             ->all();
@@ -151,17 +171,118 @@ class HistoryTest extends TestCase
             ]);
 
         $response->assertRedirect(route('scan.index'));
-        $scanJob = ScanJob::query()->firstOrFail();
-        $this->assertCount(100, $scanJob->results);
-        $this->assertNotNull($scanJob->results_path);
-        Storage::assertExists($scanJob->results_path);
+        $detectionResult = DetectionResult::query()->firstOrFail();
+        $this->assertCount(100, $detectionResult->results);
+        $this->assertNotNull($detectionResult->results_path);
+        Storage::assertExists($detectionResult->results_path);
 
         $download = $this
             ->actingAs($user)
-            ->get(route('riwayat.download', ['scanUpload' => $scanJob->scan_upload_id, 'mode' => 'after']));
+            ->get(route('riwayat.download', ['scanUpload' => $detectionResult->scan_upload_id, 'mode' => 'after']));
 
         $download->assertOk();
-        $this->assertStringContainsString('105,Malicious,90.00', $download->streamedContent());
+        $this->assertStringContainsString('105,Virus,90.00', $download->streamedContent());
+    }
+
+    public function test_scan_summary_uses_full_api_summary_when_results_are_limited(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $results = collect(range(1, 100))
+            ->map(fn (int $row) => [
+                'row' => $row,
+                'label' => 'Buffer Overflow',
+                'confidence' => 1,
+                'probabilities' => [
+                    'Normal' => 0,
+                    'Buffer Overflow' => 1,
+                ],
+            ])
+            ->all();
+
+        Http::fake([
+            '*' => Http::response([
+                'total' => 3912,
+                'total_normal' => 0,
+                'total_malware' => 3912,
+                'summary' => [
+                    'Buffer Overflow' => 3912,
+                ],
+                'results' => $results,
+            ]),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('scan.store'), [
+                'file' => UploadedFile::fake()->create('limited-results.csv', 1, 'text/csv'),
+            ]);
+
+        $response->assertRedirect(route('scan.index'));
+        $detectionResult = DetectionResult::query()->firstOrFail();
+
+        $this->assertSame(3912, $detectionResult->total);
+        $this->assertSame(3912, $detectionResult->malware_count);
+        $this->assertSame(0, $detectionResult->normal_count);
+        $this->assertSame(3912, $detectionResult->summary['labels']['Buffer Overflow']);
+    }
+
+    public function test_detection_results_index_reads_full_stored_csv_with_pagination(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $upload = $this->createUpload($user, 'full-results.csv', 'scan-uploads/full-results.csv');
+        Storage::put('scan-results/full-results.csv', $this->predictionCsv(12));
+        DetectionResult::create([
+            'user_id' => $user->id,
+            'scan_upload_id' => $upload->id,
+            'file_name' => $upload->original_name,
+            'processed_at' => Carbon::parse('2026-05-04 02:00:00', 'UTC'),
+            'total' => 12,
+            'normal_count' => 0,
+            'malware_count' => 2,
+            'unknown_count' => 0,
+            'normal_percent' => 0,
+            'malware_percent' => 16.67,
+            'average_confidence' => 100,
+            'status' => 'Selesai',
+            'summary' => [
+                'normal' => 0,
+                'malware' => 2,
+                'unknown' => 0,
+                'labels' => [
+                    'Buffer Overflow' => 2,
+                ],
+            ],
+            'results' => [
+                [
+                    'row' => 1,
+                    'label' => 'Buffer Overflow',
+                    'confidence' => 1,
+                    'probabilities' => [
+                        'Normal' => 0,
+                        'Buffer Overflow' => 1,
+                    ],
+                ],
+            ],
+            'results_path' => 'scan-results/full-results.csv',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('hasildeteksi.index', [
+                'per_page' => 10,
+                'page' => 2,
+        ]));
+
+        $response->assertOk();
+        $response->assertSeeText('Menampilkan 11-12');
+        $response->assertSeeText('dari 12 baris');
+        $response->assertSee('11');
+        $response->assertSee('12');
+        $response->assertSee('91,67%');
     }
 
     private function createUpload(User $user, string $fileName, string $path): ScanUpload
@@ -178,43 +299,47 @@ class HistoryTest extends TestCase
         ]);
     }
 
-    private function createScanJob(User $user, ScanUpload $upload, Carbon $processedAt): ScanJob
+    private function createDetectionResult(User $user, ScanUpload $upload, Carbon $processedAt): DetectionResult
     {
-        $scanJob = ScanJob::create([
+        $detectionResult = DetectionResult::create([
             'user_id' => $user->id,
             'scan_upload_id' => $upload->id,
             'file_name' => $upload->original_name,
             'processed_at' => $processedAt,
             'total' => 1,
-            'benign_count' => 1,
-            'malicious_count' => 0,
+            'normal_count' => 1,
+            'malware_count' => 0,
             'unknown_count' => 0,
-            'benign_percent' => 100,
-            'malicious_percent' => 0,
+            'normal_percent' => 100,
+            'malware_percent' => 0,
             'average_confidence' => 99,
             'status' => 'Selesai',
             'summary' => [
-                'benign' => 1,
-                'malicious' => 0,
+                'normal' => 1,
+                'malware' => 0,
                 'unknown' => 0,
-                'benign_percent' => 100,
-                'malicious_percent' => 0,
+                'normal_percent' => 100,
+                'malware_percent' => 0,
                 'average_confidence' => 99,
+                'labels' => [
+                    'Normal' => 1,
+                ],
+                'malware_labels' => [],
             ],
             'results' => [
                 [
                     'row' => 1,
-                    'label' => 'Benign',
+                    'label' => 'Normal',
                     'confidence' => 0.99,
                     'probabilities' => [
-                        'Benign' => 0.99,
-                        'Malicious' => 0.01,
+                        'Normal' => 0.99,
+                        'Virus' => 0.01,
                     ],
                 ],
             ],
         ]);
 
-        $scanJob->forceFill([
+        $detectionResult->forceFill([
             'created_at' => $processedAt,
             'updated_at' => $processedAt,
         ])->save();
@@ -224,6 +349,20 @@ class HistoryTest extends TestCase
             'updated_at' => $processedAt,
         ])->save();
 
-        return $scanJob;
+        return $detectionResult;
+    }
+
+    private function predictionCsv(int $rows): string
+    {
+        $csv = "\xEF\xBB\xBFrow_id,label,confidence_percent,prob_normal_percent,prob_buffer_overflow_percent\n";
+
+        foreach (range(1, $rows) as $row) {
+            $label = $row === $rows ? 'Normal' : 'Buffer Overflow';
+            $normalProbability = $label === 'Normal' ? '100.00' : '0.00';
+            $malwareProbability = $label === 'Normal' ? '0.00' : '100.00';
+            $csv .= implode(',', [$row, $label, '100.00', $normalProbability, $malwareProbability])."\n";
+        }
+
+        return $csv;
     }
 }

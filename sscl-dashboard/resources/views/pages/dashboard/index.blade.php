@@ -5,34 +5,47 @@
   @php
     $prediction = $prediction ?? null;
     $summary = $prediction['summary'] ?? [
-      'benign' => 0,
-      'malicious' => 0,
-      'benign_percent' => 0,
-      'malicious_percent' => 0,
+      'normal' => 0,
+      'malware' => 0,
+      'normal_percent' => 0,
+      'malware_percent' => 0,
       'average_confidence' => 0,
+      'labels' => [],
+      'malware_labels' => [],
     ];
     $total = $prediction['total'] ?? 0;
     $fileName = $prediction['file_name'] ?? 'Belum ada file diproses';
     $processedAt = $prediction['processed_at'] ?? '-';
-    $benign = (int) ($summary['benign'] ?? 0);
-    $malicious = (int) ($summary['malicious'] ?? 0);
-    $benignPercent = (float) ($summary['benign_percent'] ?? 0);
-    $maliciousPercent = (float) ($summary['malicious_percent'] ?? 0);
-    $maxLabelCount = max($benign, $malicious, 1);
+    $normal = (int) ($summary['normal'] ?? 0);
+    $malware = (int) ($summary['malware'] ?? 0);
+    $normalPercent = (float) ($summary['normal_percent'] ?? 0);
+    $malwarePercent = (float) ($summary['malware_percent'] ?? 0);
     $formatNumber = fn ($value) => number_format((float) $value, 0, ',', '.');
     $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
+    $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+    $labelCounts = collect($summary['labels'] ?? [])->whenEmpty(fn ($items) => collect([
+      'Normal' => $normal,
+      'Malware' => $malware,
+    ])->filter());
+    $maxLabelCount = max($labelCounts->max() ?: 0, 1);
 
     $statCards = [
       ['label' => 'Total Data Diproses', 'value' => $formatNumber($total), 'icon' => 'lucide-server', 'tone' => 'primary'],
-      ['label' => 'Benign', 'value' => $formatNumber($benign), 'icon' => 'lucide-shield-check', 'tone' => 'accent'],
-      ['label' => 'Malicious', 'value' => $formatNumber($malicious), 'icon' => 'lucide-bug', 'tone' => 'danger'],
+      ['label' => 'Normal', 'value' => $formatNumber($normal), 'icon' => 'lucide-shield-check', 'tone' => 'accent'],
+      ['label' => 'Total Malware', 'value' => $formatNumber($malware), 'icon' => 'lucide-bug', 'tone' => 'danger'],
       ['label' => 'Waktu Proses Terakhir', 'value' => $processedAt, 'icon' => 'lucide-clock', 'tone' => 'warning'],
     ];
 
-    $detections = [
-      ['label' => 'Benign', 'value' => $formatNumber($benign), 'height' => max(8, round(($benign / $maxLabelCount) * 88)), 'tone' => 'accent'],
-      ['label' => 'Malicious', 'value' => $formatNumber($malicious), 'height' => max(8, round(($malicious / $maxLabelCount) * 88)), 'tone' => 'danger'],
-    ];
+    $detections = $labelCounts
+      ->sortByDesc(fn ($count, $label) => $label === 'Normal' ? PHP_INT_MAX : $count)
+      ->take(7)
+      ->map(fn ($count, $label) => [
+        'label' => $label,
+        'value' => $formatNumber($count),
+        'height' => max(8, round(((int) $count / $maxLabelCount) * 88)),
+        'tone' => $toneForLabel($label),
+      ])
+      ->values();
 
     $latestDetections = collect($prediction['results'] ?? [])->take(8);
   @endphp
@@ -63,12 +76,12 @@
 
     <div class="grid gap-6 lg:grid-cols-12">
       <div class="rounded-3xl bg-surface shadow-soft p-6 lg:col-span-3">
-        <div class="text-sm font-semibold">Benign vs Malicious</div>
+        <div class="text-sm font-semibold">Normal vs Malware</div>
 
         <div class="mt-6 flex flex-col items-center gap-5">
           <div
             class="relative h-44 w-44 rounded-full"
-            style="background: conic-gradient(var(--accent) 0 {{ $benignPercent }}%, var(--danger) {{ $benignPercent }}% 100%);"
+            style="background: conic-gradient(var(--accent) 0 {{ $normalPercent }}%, var(--danger) {{ $normalPercent }}% 100%);"
           >
             <div class="absolute inset-8 rounded-full bg-surface"></div>
           </div>
@@ -77,16 +90,16 @@
             <div class="flex items-center justify-between gap-3">
               <div class="flex items-center gap-2 text-muted">
                 <span class="h-3 w-3 rounded-full bg-[color:var(--accent)]"></span>
-                Benign
+                Normal
               </div>
-              <div class="font-semibold">{{ $formatPercent($benignPercent) }}%</div>
+              <div class="font-semibold">{{ $formatPercent($normalPercent) }}%</div>
             </div>
             <div class="flex items-center justify-between gap-3">
               <div class="flex items-center gap-2 text-muted">
                 <span class="h-3 w-3 rounded-full bg-[color:var(--danger)]"></span>
-                Malicious
+                Malware
               </div>
-              <div class="font-semibold">{{ $formatPercent($maliciousPercent) }}%</div>
+              <div class="font-semibold">{{ $formatPercent($malwarePercent) }}%</div>
             </div>
           </div>
         </div>
@@ -108,6 +121,7 @@
                     'w-full rounded-t-2xl',
                     'bg-[color:var(--accent)]' => $item['tone'] === 'accent',
                     'bg-[color:var(--danger)]' => $item['tone'] === 'danger',
+                    'bg-[color:var(--warning)]' => $item['tone'] === 'warning',
                   ])
                   style="height: {{ $item['height'] * 1.8 }}px"
                 ></div>
@@ -125,26 +139,27 @@
         <div class="text-xs text-muted">{{ $prediction ? 'Dari proses deteksi terakhir' : 'Belum ada hasil deteksi di database' }}</div>
       </div>
 
-      <div class="mt-5 overflow-x-auto rounded-2xl border border-app">
-        <table class="w-full text-sm">
-          <thead class="bg-surface2 text-muted">
+      <div class="mt-5 max-h-[420px] overflow-auto rounded-2xl border border-app">
+        <table class="w-full min-w-[760px] text-sm">
+          <thead class="sticky top-0 z-10 bg-surface2 text-muted">
             <tr class="border-b border-app">
-              <th class="px-4 py-3 text-left font-medium">Row</th>
-              <th class="px-4 py-3 text-left font-medium">Label</th>
-              <th class="px-4 py-3 text-left font-medium">Confidence</th>
-              <th class="px-4 py-3 text-left font-medium">Prob. Benign</th>
-              <th class="px-4 py-3 text-left font-medium">Prob. Malicious</th>
+              <th class="px-3 py-2.5 text-left font-medium">Row</th>
+              <th class="px-3 py-2.5 text-left font-medium">Label</th>
+              <th class="px-3 py-2.5 text-left font-medium">Confidence</th>
+              <th class="px-3 py-2.5 text-left font-medium">Prob. Normal</th>
+              <th class="px-3 py-2.5 text-left font-medium">Prob. Label</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-app">
             @forelse ($latestDetections as $result)
               @php
                 $label = $result['label'] ?? 'Unknown';
-                $tone = $label === 'Malicious' ? 'danger' : 'accent';
+                $tone = $toneForLabel($label);
+                $probabilities = $result['probabilities'] ?? [];
               @endphp
               <tr class="hover:bg-surface2/50">
-                <td class="px-4 py-3">{{ $result['row'] ?? $loop->index }}</td>
-                <td class="px-4 py-3">
+                <td class="px-3 py-2.5">{{ $result['row'] ?? $loop->index }}</td>
+                <td class="px-3 py-2.5">
                   <span
                     @class([
                       'px-3 py-1 rounded-full text-xs font-semibold',
@@ -155,9 +170,9 @@
                     {{ $label }}
                   </span>
                 </td>
-                <td class="px-4 py-3 font-semibold">{{ $formatPercent(((float) ($result['confidence'] ?? 0)) * 100) }}%</td>
-                <td class="px-4 py-3 text-muted">{{ $formatPercent(((float) data_get($result, 'probabilities.Benign', 0)) * 100) }}%</td>
-                <td class="px-4 py-3 text-muted">{{ $formatPercent(((float) data_get($result, 'probabilities.Malicious', 0)) * 100) }}%</td>
+                <td class="px-3 py-2.5 font-semibold">{{ $formatPercent(((float) ($result['confidence'] ?? 0)) * 100) }}%</td>
+                <td class="px-3 py-2.5 text-muted">{{ $formatPercent(((float) ($probabilities['Normal'] ?? 0)) * 100) }}%</td>
+                <td class="px-3 py-2.5 text-muted">{{ $formatPercent(((float) ($probabilities[$label] ?? $result['confidence'] ?? 0)) * 100) }}%</td>
               </tr>
             @empty
               <tr>

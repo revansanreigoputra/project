@@ -1,18 +1,19 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DetectionResultController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ScanJobController;
+use Illuminate\Support\Facades\Route;
+
 // use App\Http\Controllers\TrafficLogController;
 // use App\Http\Controllers\MlModelController;
 // use App\Http\Controllers\DatasetController;
 // use App\Http\Controllers\SettingController;
 
-Route::get('/', fn () => redirect()->route('dashboard'))
-    ->middleware('auth');
+Route::view('/', 'auth.login')->name('home');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
@@ -27,6 +28,9 @@ Route::middleware('auth')->group(function () {
         ->name('riwayat.download');
     Route::delete('/riwayat/{scanUpload}', [HistoryController::class, 'destroy'])->name('riwayat.destroy');
     Route::get('/laporan', [ReportController::class, 'index'])->name('laporan.index');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     // Route::resource('logs', TrafficLogController::class)->only(['index']);
     // Route::resource('model', MlModelController::class)->only(['index']);
     // Route::resource('datasets', DatasetController::class)->only(['index']);

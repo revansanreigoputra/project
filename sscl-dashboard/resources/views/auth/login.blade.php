@@ -125,7 +125,7 @@
           {{-- ACTION ROWS --}}
           <div class="flex items-center justify-between gap-3 shrink-0">
             <label class="inline-flex items-center gap-2 text-sm text-muted select-none cursor-pointer">
-              <input type="checkbox" name="remember" class="h-4 w-4 rounded border-app accent-[var(--primary)]" {{ old('remember', true) ? 'checked' : '' }} />
+              <input type="checkbox" name="remember" class="h-4 w-4 rounded border-app accent-[var(--primary)]" {{ old('remember') ? 'checked' : '' }} />
               Remember me
             </label>
             @if (Route::has('password.request'))

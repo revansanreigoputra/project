@@ -14,6 +14,8 @@
             isDragging: false,
             isUploading: false,
             isProcessing: false,
+            resultSearch: '',
+            resultLabel: 'all',
             chooseFile() {
                 this.$refs.csvFile.click();
             },
@@ -191,86 +193,13 @@
             </div>
         </form>
 
-        {{-- Preview Data Table --}}
-        {{-- <div class="mt-6">
-            <div class="text-sm font-semibold mb-3">Preview Data</div>
-            <div class="overflow-x-auto rounded-2xl border border-app">
-                <table class="w-full text-sm">
-                    <thead class="bg-surface2 text-muted">
-                        <tr class="border-b border-app">
-                            <th class="px-4 py-3 text-left font-medium">No</th>
-                            <th class="px-4 py-3 text-left font-medium">Orig Port</th>
-                            <th class="px-4 py-3 text-left font-medium">Resp Port</th>
-                            <th class="px-4 py-3 text-left font-medium">Proto</th>
-                            <th class="px-4 py-3 text-left font-medium">Service</th>
-                            <th class="px-4 py-3 text-left font-medium">Duration</th>
-                            <th class="px-4 py-3 text-left font-medium">Conn State</th>
-                            <th class="px-4 py-3 text-left font-medium">Label</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-app">
-                        <tr class="hover:bg-surface2/50">
-                            <td class="px-4 py-3">1</td>
-                            <td class="px-4 py-3 text-muted">41040</td>
-                            <td class="px-4 py-3 text-muted">80</td>
-                            <td class="px-4 py-3 text-muted">tcp</td>
-                            <td class="px-4 py-3 text-muted">-</td>
-                            <td class="px-4 py-3">3139211</td>
-                            <td class="px-4 py-3 text-muted">S0</td>
-                            <td class="px-4 py-3">
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
-                                    Benign
-                                </span>
-                            </td>
-                        </tr>
-                        <tr class="hover:bg-surface2/50">
-                            <td class="px-4 py-3">2</td>
-                            <td class="px-4 py-3 text-muted">41040</td>
-                            <td class="px-4 py-3 text-muted">80</td>
-                            <td class="px-4 py-3 text-muted">tcp</td>
-                            <td class="px-4 py-3 text-muted">-</td>
-                            <td class="px-4 py-3 text-muted">-</td>
-                            <td class="px-4 py-3 text-muted">S0</td>
-                            <td class="px-4 py-3">
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
-                                    Benign
-                                </span>
-                            </td>
-                        </tr>
-                        <tr class="hover:bg-surface2/50">
-                            <td class="px-4 py-3">3</td>
-                            <td class="px-4 py-3 text-muted">41040</td>
-                            <td class="px-4 py-3 text-muted">80</td>
-                            <td class="px-4 py-3 text-muted">tcp</td>
-                            <td class="px-4 py-3 text-muted">http</td>
-                            <td class="px-4 py-3">1477656</td>
-                            <td class="px-4 py-3 text-muted">SF</td>
-                            <td class="px-4 py-3">
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]">
-                                    Benign
-                                </span>
-                            </td>
-                        </tr>
-                        <tr class="hover:bg-surface2/50">
-                            <td class="px-4 py-3">4</td>
-                            <td class="px-4 py-3 text-muted">57094</td>
-                            <td class="px-4 py-3 text-muted">6667</td>
-                            <td class="px-4 py-3 text-muted">tcp</td>
-                            <td class="px-4 py-3 text-muted">irc</td>
-                            <td class="px-4 py-3">32999954</td>
-                            <td class="px-4 py-3 text-muted">S3</td>
-                            <td class="px-4 py-3">
-                                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]">
-                                    Malicious
-                                </span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div> --}}
-
         @isset($prediction)
+            @php
+                $summary = $prediction['summary'] ?? [];
+                $labelOptions = collect($summary['labels'] ?? [])->keys()->whenEmpty(fn ($items) => collect(['Normal']));
+                $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+            @endphp
+
             <div class="mt-6 rounded-3xl bg-surface2 border border-app p-5">
                 <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
@@ -282,14 +211,14 @@
 
                 <div class="mt-5 grid gap-4 md:grid-cols-4">
                     <div class="rounded-2xl bg-surface border border-app p-4">
-                        <div class="text-xs text-muted">Benign</div>
-                        <div class="mt-1 text-2xl font-semibold">{{ number_format($prediction['summary']['benign'], 0, ',', '.') }}</div>
-                        <div class="text-xs text-muted">{{ number_format($prediction['summary']['benign_percent'], 2, ',', '.') }}%</div>
+                        <div class="text-xs text-muted">Normal</div>
+                        <div class="mt-1 text-2xl font-semibold">{{ number_format($summary['normal'] ?? 0, 0, ',', '.') }}</div>
+                        <div class="text-xs text-muted">{{ number_format($summary['normal_percent'] ?? 0, 2, ',', '.') }}%</div>
                     </div>
                     <div class="rounded-2xl bg-surface border border-app p-4">
-                        <div class="text-xs text-muted">Malicious</div>
-                        <div class="mt-1 text-2xl font-semibold">{{ number_format($prediction['summary']['malicious'], 0, ',', '.') }}</div>
-                        <div class="text-xs text-muted">{{ number_format($prediction['summary']['malicious_percent'], 2, ',', '.') }}%</div>
+                        <div class="text-xs text-muted">Malware</div>
+                        <div class="mt-1 text-2xl font-semibold">{{ number_format($summary['malware'] ?? 0, 0, ',', '.') }}</div>
+                        <div class="text-xs text-muted">{{ number_format($summary['malware_percent'] ?? 0, 2, ',', '.') }}%</div>
                     </div>
                     <div class="rounded-2xl bg-surface border border-app p-4">
                         <div class="text-xs text-muted">Rata-rata Confidence</div>
@@ -301,39 +230,67 @@
                     </div>
                 </div>
 
-                <div class="mt-5 overflow-x-auto rounded-2xl border border-app">
-                    <table class="w-full text-sm">
-                        <thead class="bg-surface text-muted">
+                <div class="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div class="relative flex-1">
+                        <x-lucide-search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                        <input
+                            type="search"
+                            x-model.debounce.150ms="resultSearch"
+                            placeholder="Cari row, label, confidence"
+                            class="w-full rounded-xl border border-app bg-surface px-10 py-2.5 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                        >
+                    </div>
+                    <select
+                        x-model="resultLabel"
+                        class="rounded-xl border border-app bg-surface px-4 py-2.5 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                    >
+                        <option value="all">Semua Label</option>
+                        @foreach ($labelOptions as $option)
+                            <option value="{{ $option }}">{{ $option }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="mt-4 max-h-[520px] overflow-auto rounded-2xl border border-app">
+                    <table class="w-full min-w-[760px] text-sm">
+                        <thead class="sticky top-0 z-10 bg-surface text-muted">
                             <tr class="border-b border-app">
-                                <th class="px-4 py-3 text-left font-medium">Row</th>
-                                <th class="px-4 py-3 text-left font-medium">Label</th>
-                                <th class="px-4 py-3 text-left font-medium">Confidence</th>
-                                <th class="px-4 py-3 text-left font-medium">Prob. Benign</th>
-                                <th class="px-4 py-3 text-left font-medium">Prob. Malicious</th>
+                                <th class="px-3 py-2.5 text-left font-medium">Row</th>
+                                <th class="px-3 py-2.5 text-left font-medium">Label</th>
+                                <th class="px-3 py-2.5 text-left font-medium">Confidence</th>
+                                <th class="px-3 py-2.5 text-left font-medium">Prob. Normal</th>
+                                <th class="px-3 py-2.5 text-left font-medium">Prob. Label</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-app">
                             @foreach (collect($prediction['results'])->take(100) as $result)
                                 @php
                                     $label = $result['label'] ?? 'Unknown';
-                                    $tone = $label === 'Malicious' ? 'danger' : 'accent';
+                                    $tone = $toneForLabel($label);
+                                    $probabilities = $result['probabilities'] ?? [];
                                 @endphp
-                                <tr class="hover:bg-surface/60">
-                                    <td class="px-4 py-3">{{ $result['row'] ?? $loop->index }}</td>
-                                    <td class="px-4 py-3">
+                                <tr
+                                    class="hover:bg-surface/60"
+                                    data-label="{{ $label }}"
+                                    data-search="{{ ($result['row'] ?? $loop->index) . ' ' . $label . ' ' . number_format(((float) ($result['confidence'] ?? 0)) * 100, 2, ',', '.') }}"
+                                    x-show="(resultLabel === 'all' || $el.dataset.label === resultLabel) && (!resultSearch || ($el.dataset.search || '').toLowerCase().includes(resultSearch.toLowerCase()))"
+                                >
+                                    <td class="px-3 py-2.5">{{ $result['row'] ?? $loop->index }}</td>
+                                    <td class="px-3 py-2.5">
                                         <span
                                             @class([
                                                 'px-3 py-1 rounded-full text-xs font-semibold',
                                                 'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $tone === 'danger',
                                                 'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $tone === 'accent',
+                                                'bg-[rgba(251,191,36,0.18)] text-[color:var(--warning)]' => $tone === 'warning',
                                             ])
                                         >
                                             {{ $label }}
                                         </span>
                                     </td>
-                                    <td class="px-4 py-3 font-semibold">{{ number_format(((float) ($result['confidence'] ?? 0)) * 100, 2, ',', '.') }}%</td>
-                                    <td class="px-4 py-3 text-muted">{{ number_format(((float) data_get($result, 'probabilities.Benign', 0)) * 100, 2, ',', '.') }}%</td>
-                                    <td class="px-4 py-3 text-muted">{{ number_format(((float) data_get($result, 'probabilities.Malicious', 0)) * 100, 2, ',', '.') }}%</td>
+                                    <td class="px-3 py-2.5 font-semibold">{{ number_format(((float) ($result['confidence'] ?? 0)) * 100, 2, ',', '.') }}%</td>
+                                    <td class="px-3 py-2.5 text-muted">{{ number_format(((float) ($probabilities['Normal'] ?? 0)) * 100, 2, ',', '.') }}%</td>
+                                    <td class="px-3 py-2.5 text-muted">{{ number_format(((float) ($probabilities[$label] ?? $result['confidence'] ?? 0)) * 100, 2, ',', '.') }}%</td>
                                 </tr>
                             @endforeach
                         </tbody>
