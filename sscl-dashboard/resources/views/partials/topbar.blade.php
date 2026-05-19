@@ -1,13 +1,17 @@
 @php
-  $map = [
-    'dashboard' => 'Dashboard',
-    'scan.index' => 'Upload Data',
-    'hasildeteksi.index' => 'Hasil Deteksi',
-    'riwayat.index' => 'Riwayat',
-    'riwayat.show' => 'Detail Riwayat',
-    'laporan.index' => 'Laporan',
-  ];
-  $title = $map[Route::currentRouteName()] ?? 'Dashboard';
+  $title = match (true) {
+    request()->routeIs('dashboard') => 'Dashboard',
+    request()->routeIs('scan.index') => 'Upload Data',
+    request()->routeIs('hasildeteksi.index') => 'Hasil Deteksi',
+    request()->routeIs('riwayat.show') => 'Detail Riwayat',
+    request()->routeIs('riwayat.*') => 'Riwayat',
+    request()->routeIs('laporan.index') => 'Laporan',
+    request()->routeIs('admin.users.*') => 'Manajemen Pengguna',
+    request()->routeIs('admin.roles.*') => 'Manajemen Role',
+    request()->routeIs('admin.permissions.*') => 'Manajemen Permission',
+    default => 'Dashboard',
+  };
+  $roleLabel = auth()->user()?->getRoleNames()->implode(', ') ?: 'Tanpa Role';
 @endphp
 
 <header class="sticky top-0 md:top-4 z-30" x-data="{ scrolled: false }"
@@ -65,7 +69,7 @@
           <div class="hidden sm:flex items-center gap-3 rounded-3xl bg-surface px-4 py-2 shadow-soft">
             <div class="text-right leading-tight">
               <div class="text-sm font-semibold">Hey, {{ auth()->user()->name ?? 'Admin' }}</div>
-              <div class="text-xs text-muted">Operator</div>
+              <div class="text-xs text-muted">{{ $roleLabel }}</div>
             </div>
             <div class="h-10 w-10 rounded-full bg-surface2 grid place-items-center text-sm font-semibold">
               {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}

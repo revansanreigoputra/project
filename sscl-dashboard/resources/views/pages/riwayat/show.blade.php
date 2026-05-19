@@ -21,6 +21,7 @@
         $status = $historyItem['status'] ?? '-';
         $labelOptions = collect($afterLabelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect(['Normal']));
         $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+        $canManageOperational = auth()->user()?->can('operational.manage');
     @endphp
 
     <div
@@ -63,15 +64,17 @@
                         {{ $status }}
                     </span>
 
-                    <a
-                        href="{{ route('riwayat.download', ['scanUpload' => $scanUpload, 'mode' => 'before']) }}"
-                        class="inline-flex items-center gap-2 rounded-xl border border-app px-4 py-2 text-sm font-semibold hover:bg-surface2 transition-colors"
-                    >
-                        <x-lucide-download class="h-4 w-4" />
-                        Unduh Asli
-                    </a>
+                    @can('reports.download')
+                        <a
+                            href="{{ route('riwayat.download', ['scanUpload' => $scanUpload, 'mode' => 'before']) }}"
+                            class="inline-flex items-center gap-2 rounded-xl border border-app px-4 py-2 text-sm font-semibold hover:bg-surface2 transition-colors"
+                        >
+                            <x-lucide-download class="h-4 w-4" />
+                            Unduh Asli
+                        </a>
+                    @endcan
 
-                    @if ($prediction)
+                    @if ($prediction && auth()->user()?->can('reports.download'))
                         <a
                             href="{{ route('riwayat.download', ['scanUpload' => $scanUpload, 'mode' => 'after']) }}"
                             class="inline-flex items-center gap-2 rounded-xl border border-app px-4 py-2 text-sm font-semibold hover:bg-surface2 transition-colors"
@@ -81,14 +84,16 @@
                         </a>
                     @endif
 
-                    <button
-                        type="button"
-                        @click="deleteModalOpen = true"
-                        class="inline-flex items-center gap-2 rounded-xl border border-[rgba(248,113,113,0.35)] px-4 py-2 text-sm font-semibold text-[color:var(--danger)] hover:bg-[rgba(248,113,113,0.12)] transition-colors"
-                    >
-                        <x-lucide-trash-2 class="h-4 w-4" />
-                        Hapus
-                    </button>
+                    @if ($canManageOperational)
+                        <button
+                            type="button"
+                            @click="deleteModalOpen = true"
+                            class="inline-flex items-center gap-2 rounded-xl border border-[rgba(248,113,113,0.35)] px-4 py-2 text-sm font-semibold text-[color:var(--danger)] hover:bg-[rgba(248,113,113,0.12)] transition-colors"
+                        >
+                            <x-lucide-trash-2 class="h-4 w-4" />
+                            Hapus
+                        </button>
+                    @endif
                 </div>
             </div>
 
@@ -161,13 +166,15 @@
                             >
                         </div>
 
-                        <a
-                            href="{{ route('riwayat.download', ['scanUpload' => $scanUpload, 'mode' => 'before']) }}"
-                            class="inline-flex items-center gap-2 rounded-xl border border-app px-4 py-2 text-sm font-semibold hover:bg-surface2 transition-colors"
-                        >
-                            <x-lucide-download class="h-4 w-4" />
-                            Download
-                        </a>
+                        @can('reports.download')
+                            <a
+                                href="{{ route('riwayat.download', ['scanUpload' => $scanUpload, 'mode' => 'before']) }}"
+                                class="inline-flex items-center gap-2 rounded-xl border border-app px-4 py-2 text-sm font-semibold hover:bg-surface2 transition-colors"
+                            >
+                                <x-lucide-download class="h-4 w-4" />
+                                Download
+                            </a>
+                        @endcan
                     </div>
                 </div>
 
@@ -269,13 +276,15 @@
                                 @endif
                             </form>
 
-                            <a
-                                href="{{ route('riwayat.download', ['scanUpload' => $scanUpload, 'mode' => 'after']) }}"
-                                class="inline-flex items-center gap-2 rounded-xl border border-app px-4 py-2 text-sm font-semibold hover:bg-surface2 transition-colors"
-                            >
-                                <x-lucide-file-down class="h-4 w-4" />
-                                Download
-                            </a>
+                            @can('reports.download')
+                                <a
+                                    href="{{ route('riwayat.download', ['scanUpload' => $scanUpload, 'mode' => 'after']) }}"
+                                    class="inline-flex items-center gap-2 rounded-xl border border-app px-4 py-2 text-sm font-semibold hover:bg-surface2 transition-colors"
+                                >
+                                    <x-lucide-file-down class="h-4 w-4" />
+                                    Download
+                                </a>
+                            @endcan
                         @endif
                     </div>
                 </div>
@@ -412,12 +421,13 @@
             </div>
         @endif
 
-        <div
-            x-show="deleteModalOpen"
-            x-cloak
-            class="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4 backdrop-blur-sm"
-            x-transition.opacity
-        >
+        @if ($canManageOperational)
+            <div
+                x-show="deleteModalOpen"
+                x-cloak
+                class="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4 backdrop-blur-sm"
+                x-transition.opacity
+            >
             <div
                 @click.outside="deleteModalOpen = false"
                 x-transition:enter="transition ease-out duration-200"
@@ -467,6 +477,7 @@
                     </form>
                 </div>
             </div>
-        </div>
+            </div>
+        @endif
     </div>
 @endsection

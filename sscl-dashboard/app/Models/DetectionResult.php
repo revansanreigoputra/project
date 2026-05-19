@@ -60,6 +60,15 @@ class DetectionResult extends Model
             : $query->whereNull('user_id');
     }
 
+    public function scopeVisibleTo(Builder $query, $user): Builder
+    {
+        if ($user && $user->can('history.view-any')) {
+            return $query;
+        }
+
+        return $query->forUser($user);
+    }
+
     public function scopeCompleted(Builder $query): Builder
     {
         return $query->where('status', 'Selesai');

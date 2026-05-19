@@ -7,6 +7,7 @@ use App\Models\DetectionResult;
 use App\Models\ScanUpload;
 use App\Models\User;
 use Carbon\Carbon;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -20,7 +21,7 @@ class HistoryTest extends TestCase
 
     public function test_history_date_filter_uses_uploaded_or_processed_date(): void
     {
-        $user = User::factory()->create();
+        $user = $this->userWithRole();
 
         $oldUpload = $this->createUpload($user, 'old.csv', 'scan-uploads/old.csv');
         $oldUpload->forceFill([
@@ -52,7 +53,7 @@ class HistoryTest extends TestCase
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
+        $user = $this->userWithRole();
         Storage::put('scan-uploads/source.csv', "source_ip,label\n10.0.0.1,Normal\n");
         $upload = $this->createUpload($user, 'source.csv', 'scan-uploads/source.csv');
 
@@ -67,7 +68,7 @@ class HistoryTest extends TestCase
 
     public function test_history_index_uses_bottom_pagination(): void
     {
-        $user = User::factory()->create();
+        $user = $this->userWithRole();
 
         foreach (range(1, 12) as $index) {
             $this->createUpload($user, 'history-'.$index.'.csv', 'scan-uploads/history-'.$index.'.csv');
@@ -89,7 +90,7 @@ class HistoryTest extends TestCase
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
+        $user = $this->userWithRole(RolePermissionSeeder::ADMIN_ROLE);
         Storage::put('scan-uploads/delete.csv', "row,label\n1,Normal\n");
         Storage::put('scan-results/delete-results.csv', "row_id,label\n1,Normal\n");
         $upload = $this->createUpload($user, 'delete.csv', 'scan-uploads/delete.csv');
@@ -113,7 +114,7 @@ class HistoryTest extends TestCase
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
+        $user = $this->userWithRole();
         Storage::put('scan-uploads/source.csv', "source_ip,label\n10.0.0.1,Normal\n");
         $upload = $this->createUpload($user, 'source.csv', 'scan-uploads/source.csv');
 
@@ -127,7 +128,7 @@ class HistoryTest extends TestCase
 
     public function test_history_can_download_prediction_results_as_csv(): void
     {
-        $user = User::factory()->create();
+        $user = $this->userWithRole();
         $upload = $this->createUpload($user, 'traffic sample.csv', 'scan-uploads/traffic-sample.csv');
         $this->createDetectionResult($user, $upload, Carbon::parse('2026-05-04 02:00:00', 'UTC'));
 
@@ -146,7 +147,7 @@ class HistoryTest extends TestCase
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
+        $user = $this->userWithRole();
         $results = collect(range(1, 105))
             ->map(fn (int $row) => [
                 'row' => $row,
@@ -190,7 +191,7 @@ class HistoryTest extends TestCase
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
+        $user = $this->userWithRole();
         $results = collect(range(1, 100))
             ->map(fn (int $row) => [
                 'row' => $row,
@@ -240,7 +241,7 @@ class HistoryTest extends TestCase
             'services.scan_notifications.send_to_user' => true,
         ]);
 
-        $user = User::factory()->create([
+        $user = $this->userWithRole(RolePermissionSeeder::PETUGAS_ROLE, [
             'email' => 'user@example.test',
         ]);
 
@@ -308,7 +309,7 @@ class HistoryTest extends TestCase
     {
         Storage::fake('local');
 
-        $user = User::factory()->create();
+        $user = $this->userWithRole();
         $upload = $this->createUpload($user, 'full-results.csv', 'scan-uploads/full-results.csv');
         Storage::put('scan-results/full-results.csv', $this->predictionCsv(12));
         DetectionResult::create([

@@ -1,11 +1,18 @@
 @php
-  $items = [
-    ['href' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'label' => 'Dashboard', 'icon' => 'layout-dashboard'],
-    ['href' => route('scan.index'), 'active' => request()->routeIs('scan.index'), 'label' => 'Upload Data', 'icon' => 'cloud-upload'],
-    ['href' => route('hasildeteksi.index'), 'active' => request()->routeIs('hasildeteksi.index'), 'label' => 'Hasil Deteksi', 'icon' => 'list-checks'],
-    ['href' => route('laporan.index'), 'active' => request()->routeIs('laporan.index'), 'label' => 'Laporan', 'icon' => 'file-text'],
-    ['href' => route('riwayat.index'), 'active' => request()->routeIs('riwayat.*'), 'label' => 'Riwayat', 'icon' => 'clock'],
-  ];
+  $user = auth()->user();
+  $items = collect([
+    ['href' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'label' => 'Dashboard', 'icon' => 'layout-dashboard', 'can' => ['dashboard.view']],
+    ['href' => route('scan.index'), 'active' => request()->routeIs('scan.index'), 'label' => 'Upload Data', 'icon' => 'cloud-upload', 'can' => ['scan.upload', 'scan.run']],
+    ['href' => route('hasildeteksi.index'), 'active' => request()->routeIs('hasildeteksi.index'), 'label' => 'Hasil Deteksi', 'icon' => 'list-checks', 'can' => ['detection.view']],
+    ['href' => route('laporan.index'), 'active' => request()->routeIs('laporan.index'), 'label' => 'Laporan', 'icon' => 'file-text', 'can' => ['reports.view']],
+    ['href' => route('riwayat.index'), 'active' => request()->routeIs('riwayat.*'), 'label' => 'Riwayat', 'icon' => 'clock', 'can' => ['history.view']],
+  ])->filter(fn ($item) => $user?->canAny($item['can']))->values();
+
+  $adminItems = collect([
+    ['href' => route('admin.users.index'), 'active' => request()->routeIs('admin.users.*'), 'label' => 'Pengguna', 'icon' => 'users-round', 'can' => ['users.manage']],
+    ['href' => route('admin.roles.index'), 'active' => request()->routeIs('admin.roles.*'), 'label' => 'Role', 'icon' => 'shield-check', 'can' => ['roles.manage']],
+    ['href' => route('admin.permissions.index'), 'active' => request()->routeIs('admin.permissions.*'), 'label' => 'Permission', 'icon' => 'key-round', 'can' => ['permissions.manage']],
+  ])->filter(fn ($item) => $user?->canAny($item['can']))->values();
 @endphp
 
 {{-- Desktop --}}
@@ -34,6 +41,20 @@
           <span>{{ $it['label'] }}</span>
         </x-sidebar-link>
       @endforeach
+
+      @if ($adminItems->isNotEmpty())
+        <div class="px-4 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Admin</div>
+        @foreach ($adminItems as $it)
+          <x-sidebar-link
+            href="{{ $it['href'] }}"
+            :active="$it['active']"
+          >
+            @php($icon = 'lucide-' . $it['icon'])
+            <x-dynamic-component :component="$icon" class="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
+            <span>{{ $it['label'] }}</span>
+          </x-sidebar-link>
+        @endforeach
+      @endif
     </nav>
 
     {{-- Footer --}}
@@ -101,6 +122,21 @@
           <span>{{ $it['label'] }}</span>
         </x-sidebar-link>
       @endforeach
+
+      @if ($adminItems->isNotEmpty())
+        <div class="px-4 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">Admin</div>
+        @foreach ($adminItems as $it)
+          <x-sidebar-link
+            href="{{ $it['href'] }}"
+            :active="$it['active']"
+            @click="mobileOpen=false"
+          >
+            @php($icon = 'lucide-' . $it['icon'])
+            <x-dynamic-component :component="$icon" class="h-[18px] w-[18px]" />
+            <span>{{ $it['label'] }}</span>
+          </x-sidebar-link>
+        @endforeach
+      @endif
     </nav>
 
     <div class="mt-auto px-3 pb-4">

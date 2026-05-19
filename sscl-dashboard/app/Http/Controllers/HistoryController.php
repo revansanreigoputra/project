@@ -45,7 +45,7 @@ class HistoryController extends Controller
                 ->latest('processed_at')
                 ->latest('id'),
         ])
-            ->forUser($request->user())
+            ->visibleTo($request->user())
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($searchQuery) use ($search) {
                     $searchQuery
@@ -221,6 +221,10 @@ class HistoryController extends Controller
 
     private function ensureUploadBelongsToUser(ScanUpload $scanUpload, Request $request): void
     {
+        if ($request->user()?->can('history.view-any')) {
+            return;
+        }
+
         abort_unless(
             (int) $scanUpload->user_id === (int) $request->user()?->getAuthIdentifier(),
             404

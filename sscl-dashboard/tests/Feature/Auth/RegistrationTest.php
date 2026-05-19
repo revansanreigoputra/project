@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -18,6 +20,8 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
+        $this->seedAccessControl();
+
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -26,6 +30,7 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertRedirect(route('scan.index', absolute: false));
+        $this->assertTrue(User::where('email', 'test@example.com')->firstOrFail()->hasRole(RolePermissionSeeder::PETUGAS_ROLE));
     }
 }

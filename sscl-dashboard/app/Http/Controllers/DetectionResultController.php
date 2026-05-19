@@ -17,7 +17,7 @@ class DetectionResultController extends Controller
         ]);
 
         $detectionResult = DetectionResult::with('scanUpload')
-            ->forUser($request->user())
+            ->visibleTo($request->user())
             ->completed()
             ->latest('processed_at')
             ->latest('id')

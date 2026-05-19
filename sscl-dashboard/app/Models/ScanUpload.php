@@ -48,4 +48,13 @@ class ScanUpload extends Model
             ? $query->where('user_id', $user->getAuthIdentifier())
             : $query->whereNull('user_id');
     }
+
+    public function scopeVisibleTo(Builder $query, $user): Builder
+    {
+        if ($user && $user->can('history.view-any')) {
+            return $query;
+        }
+
+        return $query->forUser($user);
+    }
 }

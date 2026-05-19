@@ -13,6 +13,7 @@
         ], $filters ?? []);
         $perPageOptions = $perPageOptions ?? [10, 25, 50];
         $latest = $historyItems->first();
+        $canManageOperational = auth()->user()?->can('operational.manage');
         $formatNumber = fn ($value) => number_format((float) $value, 0, ',', '.');
         $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
         $formatFileSize = function ($bytes) {
@@ -234,15 +235,17 @@
                                             <span class="hidden md:inline">Detail</span>
                                         </a>
 
-                                        <button
-                                            type="button"
-                                            @click="openDeleteModal(@js(route('riwayat.destroy', $item['upload_id'])), @js($item['file_name']))"
-                                            class="inline-grid h-9 w-9 place-items-center rounded-xl border border-[rgba(248,113,113,0.35)] text-xs font-semibold text-[color:var(--danger)] hover:bg-[rgba(248,113,113,0.12)] transition-colors md:inline-flex md:w-auto md:px-3 md:gap-1"
-                                            title="Hapus data asli dan hasil deteksi"
-                                        >
-                                            <x-lucide-trash-2 class="h-4 w-4" />
-                                            <span class="hidden md:inline">Hapus</span>
-                                        </button>
+                                        @if ($canManageOperational)
+                                            <button
+                                                type="button"
+                                                @click="openDeleteModal(@js(route('riwayat.destroy', $item['upload_id'])), @js($item['file_name']))"
+                                                class="inline-grid h-9 w-9 place-items-center rounded-xl border border-[rgba(248,113,113,0.35)] text-xs font-semibold text-[color:var(--danger)] hover:bg-[rgba(248,113,113,0.12)] transition-colors md:inline-flex md:w-auto md:px-3 md:gap-1"
+                                                title="Hapus data asli dan hasil deteksi"
+                                            >
+                                                <x-lucide-trash-2 class="h-4 w-4" />
+                                                <span class="hidden md:inline">Hapus</span>
+                                            </button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -313,12 +316,13 @@
             @endif
         </div>
 
-        <div
-            x-show="deleteModalOpen"
-            x-cloak
-            class="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4 backdrop-blur-sm"
-            x-transition.opacity
-        >
+        @if ($canManageOperational)
+            <div
+                x-show="deleteModalOpen"
+                x-cloak
+                class="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4 backdrop-blur-sm"
+                x-transition.opacity
+            >
             <div
                 @click.outside="deleteModalOpen = false"
                 x-transition:enter="transition ease-out duration-200"
@@ -368,6 +372,7 @@
                     </form>
                 </div>
             </div>
-        </div>
+            </div>
+        @endif
     </div>
 @endsection

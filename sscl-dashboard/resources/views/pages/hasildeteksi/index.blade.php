@@ -89,14 +89,14 @@
                     </a>
                 @endif
 
-                @if ($prediction && ! empty($prediction['scan_upload_id']))
+                @if ($prediction && ! empty($prediction['scan_upload_id']) && auth()->user()?->can('reports.download'))
                     <a
                         href="{{ route('riwayat.download', ['scanUpload' => $prediction['scan_upload_id'], 'mode' => 'after']) }}"
                         class="inline-flex items-center gap-2 rounded-2xl border border-app px-5 py-3 text-sm font-semibold hover:bg-surface2 transition-colors">
                         <x-lucide-download class="h-4 w-4" />
                         Export
                     </a>
-                @else
+                @elseif (auth()->user()?->can('reports.download'))
                     <button
                         type="button"
                         disabled
