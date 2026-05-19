@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\DetectionCompletedMail;
 use App\Models\DetectionResult;
 use App\Models\ScanUpload;
 use App\Support\DetectionResultTable;
@@ -12,6 +13,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -73,6 +76,7 @@ class ScanJobController extends Controller
         }
 
         $upload = $this->resolveUpload($request, $validated);
+        $processStartedAt = microtime(true);
         $apiBaseUrl = rtrim((string) config('services.ml_api.url'), '/');
         $apiKey = (string) config('services.ml_api.key');
         $timeout = (int) config('services.ml_api.timeout', 120);
@@ -158,6 +162,11 @@ class ScanJobController extends Controller
         ]);
 
         $upload->update(['status' => 'processed']);
+        $this->sendDetectionCompletedEmail(
+            $detectionResult->fresh(['scanUpload', 'user']),
+            $summary,
+            microtime(true) - $processStartedAt
+        );
 
         return redirect()->route('scan.index');
     }
@@ -337,6 +346,42 @@ class ScanJobController extends Controller
         return back()->withErrors([
             'file' => $message,
         ]);
+    }
+
+    private function sendDetectionCompletedEmail(?DetectionResult $detectionResult, array $summary, float $durationSeconds): void
+    {
+        if (! $detectionResult) {
+            return;
+        }
+
+        $detectionResult->loadMissing(['scanUpload', 'user']);
+        $recipients = collect();
+
+        if ((bool) config('services.scan_notifications.send_to_user', true)) {
+            $recipients->push($detectionResult->user?->email);
+        }
+
+        $recipients->push(config('services.scan_notifications.admin_email'));
+        $recipients = $recipients
+            ->filter(fn ($email) => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        try {
+            Mail::to($recipients->all())->send(
+                new DetectionCompletedMail($detectionResult, $summary, $durationSeconds)
+            );
+        } catch (Throwable $exception) {
+            Log::warning('Detection completion email could not be sent.', [
+                'detection_result_id' => $detectionResult->id,
+                'recipients' => $recipients->all(),
+                'error' => $exception->getMessage(),
+            ]);
+        }
     }
 
     /**

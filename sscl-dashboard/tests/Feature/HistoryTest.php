@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\DetectionCompletedMail;
 use App\Models\DetectionResult;
 use App\Models\ScanUpload;
 use App\Models\User;
@@ -9,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -228,6 +230,80 @@ class HistoryTest extends TestCase
         $this->assertSame(3912, $detectionResult->summary['labels']['Buffer Overflow']);
     }
 
+    public function test_scan_sends_summary_email_after_detection_finishes(): void
+    {
+        Storage::fake('local');
+        Mail::fake();
+
+        config([
+            'services.scan_notifications.admin_email' => 'admin@example.test',
+            'services.scan_notifications.send_to_user' => true,
+        ]);
+
+        $user = User::factory()->create([
+            'email' => 'user@example.test',
+        ]);
+
+        Http::fake([
+            '*' => Http::response([
+                'total' => 3,
+                'total_normal' => 2,
+                'total_malware' => 1,
+                'summary' => [
+                    'Normal' => 2,
+                    'Trojan' => 1,
+                ],
+                'results' => [
+                    [
+                        'row' => 1,
+                        'label' => 'Normal',
+                        'confidence' => 0.98,
+                        'probabilities' => [
+                            'Normal' => 0.98,
+                            'Trojan' => 0.02,
+                        ],
+                    ],
+                    [
+                        'row' => 2,
+                        'label' => 'Normal',
+                        'confidence' => 0.96,
+                        'probabilities' => [
+                            'Normal' => 0.96,
+                            'Trojan' => 0.04,
+                        ],
+                    ],
+                    [
+                        'row' => 3,
+                        'label' => 'Trojan',
+                        'confidence' => 0.91,
+                        'probabilities' => [
+                            'Normal' => 0.09,
+                            'Trojan' => 0.91,
+                        ],
+                    ],
+                ],
+            ]),
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->post(route('scan.store'), [
+                'file' => UploadedFile::fake()->create('email-summary.csv', 1, 'text/csv'),
+            ]);
+
+        $response->assertRedirect(route('scan.index'));
+
+        $detectionResult = DetectionResult::query()->firstOrFail();
+
+        Mail::assertSent(DetectionCompletedMail::class, function (DetectionCompletedMail $mail) use ($detectionResult) {
+            return $mail->hasTo('user@example.test')
+                && $mail->hasTo('admin@example.test')
+                && $mail->detectionResult->id === $detectionResult->id
+                && $mail->summary['normal'] === 2
+                && $mail->summary['malware'] === 1;
+        });
+    }
+
     public function test_detection_results_index_reads_full_stored_csv_with_pagination(): void
     {
         Storage::fake('local');
@@ -275,7 +351,7 @@ class HistoryTest extends TestCase
             ->get(route('hasildeteksi.index', [
                 'per_page' => 10,
                 'page' => 2,
-        ]));
+            ]));
 
         $response->assertOk();
         $response->assertSeeText('Menampilkan 11-12');

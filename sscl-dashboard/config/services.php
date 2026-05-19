@@ -41,4 +41,9 @@ return [
         'timeout' => env('ML_API_TIMEOUT', 120),
     ],
 
+    'scan_notifications' => [
+        'admin_email' => env('SCAN_NOTIFICATION_ADMIN_EMAIL'),
+        'send_to_user' => env('SCAN_NOTIFICATION_SEND_TO_USER', true),
+    ],
+
 ];

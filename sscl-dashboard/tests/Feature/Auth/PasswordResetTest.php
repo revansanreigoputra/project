@@ -6,6 +6,8 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
+use Symfony\Component\Mailer\Exception\TransportException;
 use Tests\TestCase;
 
 class PasswordResetTest extends TestCase
@@ -69,5 +71,20 @@ class PasswordResetTest extends TestCase
 
             return true;
         });
+    }
+
+    public function test_reset_password_link_failure_returns_form_error(): void
+    {
+        $user = User::factory()->create();
+
+        Password::shouldReceive('sendResetLink')
+            ->once()
+            ->andThrow(new TransportException('SMTP authentication failed.'));
+
+        $response = $this->post('/forgot-password', ['email' => $user->email]);
+
+        $response
+            ->assertRedirect()
+            ->assertSessionHasErrors('email');
     }
 }
