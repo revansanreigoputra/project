@@ -39,14 +39,14 @@
             Monitoring traffic, scan/prediction, dan analitik deteksi dalam satu tampilan.
           </p>
 
-          <div class="mt-6 space-y-3">
-            @foreach ($features as $f)
+          {{-- <div class="mt-6 space-y-3"> --}}
+            {{-- @foreach ($features as $f)
               <div class="flex items-center gap-3">
                 <span class="h-2 w-2 rounded-full bg-primary"></span>
                 <span class="text-muted text-sm">{{ $f }}</span>
               </div>
-            @endforeach
-          </div>
+            @endforeach --}}
+          {{-- </div> --}}
         </div>
 
         <div class="text-xs text-muted">

@@ -39,14 +39,14 @@
             Daftarkan akun untuk mengakses dashboard monitoring malware.
           </p>
 
-          <div class="mt-6 space-y-3">
+          {{-- <div class="mt-6 space-y-3">
             @foreach ($features as $feature)
               <div class="flex items-center gap-3">
                 <span class="h-2 w-2 rounded-full bg-primary"></span>
                 <span class="text-sm text-muted">{{ $feature }}</span>
               </div>
             @endforeach
-          </div>
+          </div> --}}
         </div>
 
         <div class="text-xs text-muted">
