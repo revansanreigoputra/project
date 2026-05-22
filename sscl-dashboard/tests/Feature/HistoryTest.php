@@ -244,6 +244,10 @@ class HistoryTest extends TestCase
         $user = $this->userWithRole(RolePermissionSeeder::PETUGAS_ROLE, [
             'email' => 'user@example.test',
         ]);
+        $secondAdmin = User::factory()->create([
+            'email' => 'security-admin@example.test',
+        ]);
+        $secondAdmin->assignRole(RolePermissionSeeder::ADMIN_ROLE);
 
         Http::fake([
             '*' => Http::response([
@@ -297,12 +301,94 @@ class HistoryTest extends TestCase
         $detectionResult = DetectionResult::query()->firstOrFail();
 
         Mail::assertSent(DetectionCompletedMail::class, function (DetectionCompletedMail $mail) use ($detectionResult) {
+            $renderedMail = $mail->render();
+
             return $mail->hasTo('user@example.test')
+                && $mail->hasTo('admin@example.com')
+                && $mail->hasTo('security-admin@example.test')
                 && $mail->hasTo('admin@example.test')
                 && $mail->detectionResult->id === $detectionResult->id
                 && $mail->summary['normal'] === 2
-                && $mail->summary['malware'] === 1;
+                && $mail->summary['malware'] === 1
+                && str_contains($renderedMail, route('hasildeteksi.show', $detectionResult))
+                && str_contains($renderedMail, 'Buka Detail Hasil Deteksi');
         });
+    }
+
+    public function test_detection_result_detail_page_shows_complete_review_data(): void
+    {
+        $user = $this->userWithRole(RolePermissionSeeder::PETUGAS_ROLE, [
+            'name' => 'Ayu Petugas',
+            'email' => 'ayu.petugas@example.test',
+        ]);
+        $upload = $this->createUpload($user, 'detail-review.csv', 'scan-uploads/detail-review.csv');
+        $detectionResult = $this->createDetectionResult($user, $upload, Carbon::parse('2026-05-04 02:00:00', 'UTC'));
+
+        $detectionResult->update([
+            'total' => 3,
+            'normal_count' => 2,
+            'malware_count' => 1,
+            'normal_percent' => 66.67,
+            'malware_percent' => 33.33,
+            'average_confidence' => 95,
+            'summary' => [
+                'normal' => 2,
+                'malware' => 1,
+                'unknown' => 0,
+                'normal_percent' => 66.67,
+                'malware_percent' => 33.33,
+                'average_confidence' => 95,
+                'labels' => [
+                    'Normal' => 2,
+                    'Trojan' => 1,
+                ],
+                'malware_labels' => [
+                    'Trojan' => 1,
+                ],
+            ],
+            'results' => [
+                [
+                    'row' => 1,
+                    'label' => 'Normal',
+                    'confidence' => 0.97,
+                    'probabilities' => [
+                        'Normal' => 0.97,
+                        'Trojan' => 0.03,
+                    ],
+                ],
+                [
+                    'row' => 2,
+                    'label' => 'Trojan',
+                    'confidence' => 0.94,
+                    'probabilities' => [
+                        'Normal' => 0.06,
+                        'Trojan' => 0.94,
+                    ],
+                ],
+                [
+                    'row' => 3,
+                    'label' => 'Normal',
+                    'confidence' => 0.95,
+                    'probabilities' => [
+                        'Normal' => 0.95,
+                        'Trojan' => 0.05,
+                    ],
+                ],
+            ],
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('hasildeteksi.show', $detectionResult));
+
+        $response->assertOk();
+        $response->assertSeeText('Review hasil deteksi');
+        $response->assertSeeText('detail-review.csv');
+        $response->assertSeeText('Ayu Petugas');
+        $response->assertSeeText('Malware Terdeteksi');
+        $response->assertSeeText('Trojan');
+        $response->assertSeeText('66,67%');
+        $response->assertSeeText('Tabel Detail Hasil');
     }
 
     public function test_detection_results_index_reads_full_stored_csv_with_pagination(): void

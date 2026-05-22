@@ -46,4 +46,38 @@ class DetectionResultController extends Controller
             'perPageOptions' => DetectionResultTable::PER_PAGE_OPTIONS,
         ]);
     }
+
+    public function show(Request $request, DetectionResult $detectionResult)
+    {
+        $filters = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'label' => ['nullable', 'string', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'in:10,25,50,100'],
+        ]);
+
+        $detectionResult = DetectionResult::with(['scanUpload.user', 'user'])
+            ->visibleTo($request->user())
+            ->whereKey($detectionResult->getKey())
+            ->firstOrFail();
+        $table = DetectionResultTable::make($detectionResult, [
+            'search' => trim((string) ($filters['search'] ?? '')),
+            'label' => $filters['label'] ?? 'all',
+            'per_page' => $filters['per_page'] ?? 10,
+        ]);
+        $prediction = $detectionResult->toPredictionArray();
+        $prediction['summary'] = $table['summary'];
+
+        return view('pages.hasildeteksi.show', [
+            'detectionResult' => $detectionResult,
+            'prediction' => $prediction,
+            'resultsPaginator' => $table['paginator'],
+            'labelOptions' => $table['label_options'],
+            'tableFilters' => [
+                'search' => trim((string) ($filters['search'] ?? '')),
+                'label' => $filters['label'] ?? 'all',
+                'per_page' => DetectionResultTable::perPage($filters['per_page'] ?? null),
+            ],
+            'perPageOptions' => DetectionResultTable::PER_PAGE_OPTIONS,
+        ]);
+    }
 }

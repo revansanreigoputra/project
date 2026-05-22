@@ -30,6 +30,10 @@
                         <td style="padding: 0 32px 24px;">
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; border: 1px solid #e2e8f0;">
                                 <tr>
+                                    <td style="padding: 12px 14px; width: 52%; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 14px;">Petugas</td>
+                                    <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-size: 14px; font-weight: 700;">{{ $petugasName }} @if($petugasEmail !== '-') ({{ $petugasEmail }}) @endif</td>
+                                </tr>
+                                <tr>
                                     <td style="padding: 12px 14px; width: 52%; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 14px;">Total data diperiksa</td>
                                     <td style="padding: 12px 14px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-size: 14px; font-weight: 700;">{{ number_format($total, 0, ',', '.') }}</td>
                                 </tr>
@@ -66,6 +70,17 @@
                                     <td style="padding: 12px 14px; color: {{ $malware > 0 ? '#b91c1c' : '#047857' }}; font-size: 14px; font-weight: 700;">{{ $inspectionStatus }}</td>
                                 </tr>
                             </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 0 32px 26px;">
+                            <a href="{{ $reviewUrl }}" style="display: inline-block; background: #2563eb; border-radius: 10px; color: #ffffff; font-size: 14px; font-weight: 700; padding: 13px 18px; text-decoration: none;">
+                                Buka Detail Hasil Deteksi
+                            </a>
+                            <p style="margin: 12px 0 0; color: #64748b; font-size: 12px; line-height: 1.6;">
+                                Jika tombol tidak bisa dibuka, salin link ini ke browser: <br>
+                                <a href="{{ $reviewUrl }}" style="color: #2563eb; word-break: break-all;">{{ $reviewUrl }}</a>
+                            </p>
                         </td>
                     </tr>
                     <tr>

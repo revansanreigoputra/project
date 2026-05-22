@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\DetectionCompletedMail;
 use App\Models\DetectionResult;
 use App\Models\ScanUpload;
+use App\Models\User;
 use App\Support\DetectionResultTable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
@@ -354,14 +355,15 @@ class ScanJobController extends Controller
             return;
         }
 
-        $detectionResult->loadMissing(['scanUpload', 'user']);
-        $recipients = collect();
-
-        if ((bool) config('services.scan_notifications.send_to_user', true)) {
-            $recipients->push($detectionResult->user?->email);
-        }
-
-        $recipients->push(config('services.scan_notifications.admin_email'));
+        $detectionResult->loadMissing(['scanUpload.user', 'user']);
+        $adminEmails = User::query()
+            ->whereHas('roles', fn ($query) => $query->where('name', 'Admin'))
+            ->pluck('email');
+        $recipients = collect()
+            ->merge($adminEmails)
+            ->push($detectionResult->user?->email)
+            ->push($detectionResult->scanUpload?->user?->email)
+            ->push(config('services.scan_notifications.admin_email'));
         $recipients = $recipients
             ->filter(fn ($email) => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL))
             ->unique()

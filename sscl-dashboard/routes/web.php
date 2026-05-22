@@ -35,6 +35,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/hasil-deteksi', [DetectionResultController::class, 'index'])
         ->middleware('permission:detection.view')
         ->name('hasildeteksi.index');
+    Route::get('/hasil-deteksi/{detectionResult}', [DetectionResultController::class, 'show'])
+        ->middleware('permission:detection.view')
+        ->name('hasildeteksi.show');
     Route::get('/riwayat', [HistoryController::class, 'index'])
         ->middleware('permission:history.view')
         ->name('riwayat.index');

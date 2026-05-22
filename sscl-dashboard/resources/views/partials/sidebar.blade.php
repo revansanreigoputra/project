@@ -3,7 +3,7 @@
   $items = collect([
     ['href' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'label' => 'Dashboard', 'icon' => 'layout-dashboard', 'can' => ['dashboard.view']],
     ['href' => route('scan.index'), 'active' => request()->routeIs('scan.index'), 'label' => 'Upload Data', 'icon' => 'cloud-upload', 'can' => ['scan.upload', 'scan.run']],
-    ['href' => route('hasildeteksi.index'), 'active' => request()->routeIs('hasildeteksi.index'), 'label' => 'Hasil Deteksi', 'icon' => 'list-checks', 'can' => ['detection.view']],
+    ['href' => route('hasildeteksi.index'), 'active' => request()->routeIs('hasildeteksi.*'), 'label' => 'Hasil Deteksi', 'icon' => 'list-checks', 'can' => ['detection.view']],
     ['href' => route('laporan.index'), 'active' => request()->routeIs('laporan.index'), 'label' => 'Laporan', 'icon' => 'file-text', 'can' => ['reports.view']],
     ['href' => route('riwayat.index'), 'active' => request()->routeIs('riwayat.*'), 'label' => 'Riwayat', 'icon' => 'clock', 'can' => ['history.view']],
   ])->filter(fn ($item) => $user?->canAny($item['can']))->values();

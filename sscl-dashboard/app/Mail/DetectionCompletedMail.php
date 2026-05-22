@@ -18,7 +18,7 @@ class DetectionCompletedMail extends Mailable
         public array $summary,
         public ?float $durationSeconds = null,
     ) {
-        $this->detectionResult->loadMissing(['scanUpload', 'user']);
+        $this->detectionResult->loadMissing(['scanUpload.user', 'user']);
     }
 
     public function envelope(): Envelope
@@ -49,6 +49,9 @@ class DetectionCompletedMail extends Mailable
                 'averageConfidence' => (float) ($this->summary['average_confidence'] ?? $this->detectionResult->average_confidence ?? 0),
                 'processStatus' => $this->detectionResult->status,
                 'inspectionStatus' => $this->inspectionStatus(),
+                'petugasName' => $this->petugasName(),
+                'petugasEmail' => $this->petugasEmail(),
+                'reviewUrl' => route('hasildeteksi.show', $this->detectionResult),
             ],
         );
     }
@@ -91,5 +94,19 @@ class DetectionCompletedMail extends Mailable
         $malware = (int) ($this->summary['malware'] ?? $this->detectionResult->malware_count ?? 0);
 
         return $malware > 0 ? 'Malware terdeteksi' : 'Tidak ditemukan malware';
+    }
+
+    private function petugasName(): string
+    {
+        return $this->detectionResult->user?->name
+            ?: $this->detectionResult->scanUpload?->user?->name
+            ?: '-';
+    }
+
+    private function petugasEmail(): string
+    {
+        return $this->detectionResult->user?->email
+            ?: $this->detectionResult->scanUpload?->user?->email
+            ?: '-';
     }
 }
