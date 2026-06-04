@@ -30,7 +30,7 @@ class RegistrationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('scan.index', absolute: false));
+        $response->assertRedirect(route('dashboard', absolute: false));
         $this->assertTrue(User::where('email', 'test@example.com')->firstOrFail()->hasRole(RolePermissionSeeder::PETUGAS_ROLE));
     }
 }

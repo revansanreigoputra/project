@@ -1,7 +1,7 @@
 @php
-    $homeHref = Auth::user()?->can('dashboard.view')
-        ? route('dashboard')
-        : (Auth::user()?->canAny(['scan.upload', 'scan.run']) ? route('scan.index') : route('profile.edit'));
+    $homeHref = Auth::check()
+        ? route(\App\Support\AccessRedirect::routeFor(Auth::user()))
+        : route('home');
 @endphp
 
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">

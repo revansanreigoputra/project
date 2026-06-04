@@ -4,11 +4,14 @@ use App\Http\Controllers\Admin\PermissionManagementController;
 use App\Http\Controllers\Admin\RoleManagementController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DatabaseBackupController;
 use App\Http\Controllers\DetectionResultController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ScanJobController;
+use App\Support\AccessRedirect;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // use App\Http\Controllers\TrafficLogController;
@@ -16,46 +19,65 @@ use Illuminate\Support\Facades\Route;
 // use App\Http\Controllers\DatasetController;
 // use App\Http\Controllers\SettingController;
 
-Route::view('/', 'auth.login')->name('home');
+Route::get('/', function (Request $request) {
+    return $request->user()
+        ? redirect()->route(AccessRedirect::routeFor($request->user()))
+        : view('auth.login');
+})->name('home');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])
-        ->middleware('permission:dashboard.view')
-        ->name('dashboard');
+    Route::middleware('role:Petugas')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'index'])
+            ->middleware('permission:dashboard.view')
+            ->name('dashboard');
 
-    Route::post('/scan/upload', [ScanJobController::class, 'upload'])
-        ->middleware('permission:scan.upload')
-        ->name('scan.upload');
-    Route::resource('scan', ScanJobController::class)
-        ->only(['index'])
-        ->middleware('permission:scan.upload|scan.run');
-    Route::resource('scan', ScanJobController::class)
-        ->only(['store'])
-        ->middleware('permission:scan.run');
-    Route::get('/hasil-deteksi', [DetectionResultController::class, 'index'])
-        ->middleware('permission:detection.view')
-        ->name('hasildeteksi.index');
-    Route::get('/hasil-deteksi/{detectionResult}', [DetectionResultController::class, 'show'])
-        ->middleware('permission:detection.view')
-        ->name('hasildeteksi.show');
-    Route::get('/riwayat', [HistoryController::class, 'index'])
-        ->middleware('permission:history.view')
-        ->name('riwayat.index');
-    Route::get('/riwayat/{scanUpload}', [HistoryController::class, 'show'])
-        ->middleware('permission:history.view')
-        ->name('riwayat.show');
-    Route::get('/riwayat/{scanUpload}/download/{mode}', [HistoryController::class, 'download'])
-        ->middleware('permission:reports.download')
-        ->whereIn('mode', ['before', 'after'])
-        ->name('riwayat.download');
-    Route::delete('/riwayat/{scanUpload}', [HistoryController::class, 'destroy'])
-        ->middleware('permission:operational.manage')
-        ->name('riwayat.destroy');
-    Route::get('/laporan', [ReportController::class, 'index'])
-        ->middleware('permission:reports.view')
-        ->name('laporan.index');
+        Route::post('/scan/upload', [ScanJobController::class, 'upload'])
+            ->middleware('permission:scan.upload')
+            ->name('scan.upload');
+        Route::resource('scan', ScanJobController::class)
+            ->only(['index'])
+            ->middleware('permission:scan.upload|scan.run');
+        Route::resource('scan', ScanJobController::class)
+            ->only(['store'])
+            ->middleware('permission:scan.run');
+        Route::get('/hasil-deteksi', [DetectionResultController::class, 'index'])
+            ->middleware('permission:detection.view')
+            ->name('hasildeteksi.index');
+        Route::get('/hasil-deteksi/{detectionResult}', [DetectionResultController::class, 'show'])
+            ->middleware('permission:detection.view')
+            ->name('hasildeteksi.show');
+        Route::get('/riwayat', [HistoryController::class, 'index'])
+            ->middleware('permission:history.view')
+            ->name('riwayat.index');
+        Route::get('/riwayat/{scanUpload}', [HistoryController::class, 'show'])
+            ->middleware('permission:history.view')
+            ->name('riwayat.show');
+        Route::get('/riwayat/{scanUpload}/download/{mode}', [HistoryController::class, 'download'])
+            ->middleware('permission:reports.download')
+            ->whereIn('mode', ['before', 'after'])
+            ->name('riwayat.download');
+        Route::delete('/riwayat/{scanUpload}', [HistoryController::class, 'destroy'])
+            ->middleware('permission:operational.manage')
+            ->name('riwayat.destroy');
+        Route::get('/laporan', [ReportController::class, 'index'])
+            ->middleware('permission:reports.view')
+            ->name('laporan.index');
 
-    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::get('/backup', [DatabaseBackupController::class, 'index'])
+            ->middleware('permission:database.backup')
+            ->name('backup.index');
+        Route::post('/backup', [DatabaseBackupController::class, 'store'])
+            ->middleware('permission:database.backup')
+            ->name('backup.store');
+        Route::patch('/backup/schedule', [DatabaseBackupController::class, 'updateSchedule'])
+            ->middleware('permission:database.backup')
+            ->name('backup.schedule');
+        Route::get('/backup/{backup}/download', [DatabaseBackupController::class, 'download'])
+            ->middleware('permission:database.backup')
+            ->name('backup.download');
+    });
+
+    Route::prefix('admin')->name('admin.')->middleware('role:Admin')->group(function () {
         Route::resource('users', UserManagementController::class)
             ->middleware('permission:users.manage')
             ->except(['show']);

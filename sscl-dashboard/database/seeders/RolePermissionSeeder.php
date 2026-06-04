@@ -28,15 +28,26 @@ class RolePermissionSeeder extends Seeder
         'reports.view',
         'reports.download',
         'operational.manage',
+        'database.backup',
+    ];
+
+    public const ADMIN_PERMISSIONS = [
+        'users.manage',
+        'roles.manage',
+        'permissions.manage',
     ];
 
     public const PETUGAS_PERMISSIONS = [
+        'dashboard.view',
         'scan.upload',
         'scan.run',
         'detection.view',
         'history.view',
+        'history.view-any',
         'reports.view',
         'reports.download',
+        'operational.manage',
+        'database.backup',
     ];
 
     public function run(): void
@@ -54,7 +65,7 @@ class RolePermissionSeeder extends Seeder
             'name' => self::ADMIN_ROLE,
             'guard_name' => 'web',
         ]);
-        $admin->syncPermissions(self::PERMISSIONS);
+        $admin->syncPermissions(self::ADMIN_PERMISSIONS);
 
         $petugas = Role::firstOrCreate([
             'name' => self::PETUGAS_ROLE,
@@ -62,21 +73,25 @@ class RolePermissionSeeder extends Seeder
         ]);
         $petugas->syncPermissions(self::PETUGAS_PERMISSIONS);
 
-        User::firstOrCreate(
+        $adminUser = User::firstOrCreate(
             ['email' => 'admin@example.com'],
             [
                 'name' => 'Admin SSCL',
                 'password' => Hash::make('password'),
             ]
-        )->assignRole($admin);
+        );
+        $adminUser->syncRoles([$admin]);
+        $adminUser->syncPermissions([]);
 
-        User::firstOrCreate(
+        $petugasUser = User::firstOrCreate(
             ['email' => 'petugas@example.com'],
             [
                 'name' => 'Petugas SSCL',
                 'password' => Hash::make('password'),
             ]
-        )->assignRole($petugas);
+        );
+        $petugasUser->syncRoles([$petugas]);
+        $petugasUser->syncPermissions([]);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

@@ -6,6 +6,7 @@
     ['href' => route('hasildeteksi.index'), 'active' => request()->routeIs('hasildeteksi.*'), 'label' => 'Hasil Deteksi', 'icon' => 'list-checks', 'can' => ['detection.view']],
     ['href' => route('laporan.index'), 'active' => request()->routeIs('laporan.index'), 'label' => 'Laporan', 'icon' => 'file-text', 'can' => ['reports.view']],
     ['href' => route('riwayat.index'), 'active' => request()->routeIs('riwayat.*'), 'label' => 'Riwayat', 'icon' => 'clock', 'can' => ['history.view']],
+    ['href' => route('backup.index'), 'active' => request()->routeIs('backup.*'), 'label' => 'Backup Database', 'icon' => 'database-backup', 'can' => ['database.backup']],
   ])->filter(fn ($item) => $user?->canAny($item['can']))->values();
 
   $adminItems = collect([

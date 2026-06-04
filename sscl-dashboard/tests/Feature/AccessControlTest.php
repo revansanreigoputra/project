@@ -41,27 +41,50 @@ class AccessControlTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_admin_can_monitor_all_scan_history(): void
+    public function test_admin_cannot_open_operational_pages(): void
     {
         $admin = $this->userWithRole(RolePermissionSeeder::ADMIN_ROLE);
-        $petugas = $this->userWithRole();
 
-        $this->createUpload($petugas, 'petugas-traffic.csv');
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertForbidden();
 
         $this->actingAs($admin)
             ->get(route('riwayat.index'))
-            ->assertOk()
-            ->assertSee('petugas-traffic.csv');
+            ->assertForbidden();
+
+        $this->actingAs($admin)
+            ->get(route('backup.index'))
+            ->assertForbidden();
     }
 
-    public function test_petugas_cannot_delete_history(): void
+    public function test_petugas_can_open_dashboard_and_backup_pages(): void
+    {
+        $petugas = $this->userWithRole();
+
+        $this->actingAs($petugas)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Dashboard');
+
+        $this->actingAs($petugas)
+            ->get(route('backup.index'))
+            ->assertOk()
+            ->assertSee('Manual Backup');
+    }
+
+    public function test_petugas_can_manage_operational_history(): void
     {
         $petugas = $this->userWithRole();
         $upload = $this->createUpload($petugas, 'protected.csv');
 
         $this->actingAs($petugas)
             ->delete(route('riwayat.destroy', $upload))
-            ->assertForbidden();
+            ->assertRedirect(route('riwayat.index'));
+
+        $this->assertDatabaseMissing('scan_uploads', [
+            'id' => $upload->id,
+        ]);
     }
 
     private function createUpload(User $user, string $fileName): ScanUpload

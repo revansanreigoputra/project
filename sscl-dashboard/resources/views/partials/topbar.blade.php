@@ -6,6 +6,7 @@
     request()->routeIs('riwayat.show') => 'Detail Riwayat',
     request()->routeIs('riwayat.*') => 'Riwayat',
     request()->routeIs('laporan.index') => 'Laporan',
+    request()->routeIs('backup.*') => 'Backup Database',
     request()->routeIs('admin.users.*') => 'Manajemen Pengguna',
     request()->routeIs('admin.roles.*') => 'Manajemen Role',
     request()->routeIs('admin.permissions.*') => 'Manajemen Permission',

@@ -90,7 +90,7 @@ class HistoryTest extends TestCase
     {
         Storage::fake('local');
 
-        $user = $this->userWithRole(RolePermissionSeeder::ADMIN_ROLE);
+        $user = $this->userWithRole(RolePermissionSeeder::PETUGAS_ROLE);
         Storage::put('scan-uploads/delete.csv', "row,label\n1,Normal\n");
         Storage::put('scan-results/delete-results.csv', "row_id,label\n1,Normal\n");
         $upload = $this->createUpload($user, 'delete.csv', 'scan-uploads/delete.csv');
