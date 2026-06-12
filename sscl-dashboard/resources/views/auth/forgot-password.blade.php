@@ -4,9 +4,9 @@
 
 @php
   $features = [
-    'Keamanan akun terjamin',
-    'Proses pemulihan cepat',
-    'Tampilan konsisten (light/dark)',
+    // 'Keamanan akun terjamin',
+    // 'Proses pemulihan cepat',
+    // 'Tampilan konsisten (light/dark)',
   ];
 @endphp
 

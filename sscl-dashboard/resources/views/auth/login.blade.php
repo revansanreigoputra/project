@@ -139,12 +139,12 @@
             Sign in
           </button>
 
-          <div class="text-center text-sm text-muted mt-auto pt-4 shrink-0">
+          {{-- <div class="text-center text-sm text-muted mt-auto pt-4 shrink-0">
             Belum punya akun?
             <a href="{{ route('register') }}" class="text-primary hover:underline font-medium">
               Registrasi terlebih dahulu
             </a>
-          </div>
+          </div> --}}
         </form>
 
       </div>

@@ -4,9 +4,9 @@
 
 @php
   $features = [
-    'Keamanan akun terjamin',
-    'Enkripsi password standar industri',
-    'Tampilan konsisten (light/dark)',
+    // 'Keamanan akun terjamin',
+    // 'Enkripsi password standar industri',
+    // 'Tampilan konsisten (light/dark)',
   ];
 @endphp
 

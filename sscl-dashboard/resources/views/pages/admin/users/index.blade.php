@@ -50,7 +50,7 @@
       </div>
     </div>
 
-    <div class="grid gap-4 md:grid-cols-3">
+    <div class="grid gap-4 md:grid-cols-2">
       <div class="rounded-3xl bg-surface p-5 shadow-soft">
         <div class="text-xs font-semibold text-muted">Total Pengguna</div>
         <div class="mt-2 text-3xl font-semibold">{{ number_format($totalUsers, 0, ',', '.') }}</div>
@@ -65,13 +65,13 @@
           @endforelse
         </div>
       </div>
-      <div class="rounded-3xl bg-surface p-5 shadow-soft">
+      {{-- <div class="rounded-3xl bg-surface p-5 shadow-soft">
         <div class="text-xs font-semibold text-muted">Mode Akses</div>
         <div class="mt-2 flex items-center gap-2 text-sm font-semibold">
           <x-lucide-shield-check class="h-5 w-5 text-[color:var(--accent)]" />
           RBAC Spatie Aktif
         </div>
-      </div>
+      </div> --}}
     </div>
 
     <div class="rounded-3xl bg-surface p-5 shadow-soft">
