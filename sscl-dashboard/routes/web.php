@@ -41,10 +41,10 @@ Route::middleware('auth')->group(function () {
             ->only(['store'])
             ->middleware('permission:scan.run');
         Route::get('/hasil-deteksi', [DetectionResultController::class, 'index'])
-            ->middleware('permission:detection.view')
+            ->middleware('permission:detection.view|reports.view')
             ->name('hasildeteksi.index');
         Route::get('/hasil-deteksi/{detectionResult}', [DetectionResultController::class, 'show'])
-            ->middleware('permission:detection.view')
+            ->middleware('permission:detection.view|reports.view')
             ->name('hasildeteksi.show');
         Route::get('/riwayat', [HistoryController::class, 'index'])
             ->middleware('permission:history.view')
@@ -60,7 +60,7 @@ Route::middleware('auth')->group(function () {
             ->middleware('permission:operational.manage')
             ->name('riwayat.destroy');
         Route::get('/laporan', [ReportController::class, 'index'])
-            ->middleware('permission:reports.view')
+            ->middleware('permission:reports.view|detection.view')
             ->name('laporan.index');
 
         Route::get('/backup', [DatabaseBackupController::class, 'index'])

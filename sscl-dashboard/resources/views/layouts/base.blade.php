@@ -22,6 +22,7 @@
 <body class="min-h-screen bg-app text-app antialiased">
   <div x-data="ui" x-init="init()" class="min-h-screen">
     @yield('content')
+    <x-confirmation-dialog />
   </div>
 </body>
 </html>

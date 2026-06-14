@@ -3,8 +3,7 @@
   $items = collect([
     ['href' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'label' => 'Dashboard', 'icon' => 'layout-dashboard', 'can' => ['dashboard.view']],
     ['href' => route('scan.index'), 'active' => request()->routeIs('scan.index'), 'label' => 'Upload Data', 'icon' => 'cloud-upload', 'can' => ['scan.upload', 'scan.run']],
-    ['href' => route('hasildeteksi.index'), 'active' => request()->routeIs('hasildeteksi.*'), 'label' => 'Hasil Deteksi', 'icon' => 'list-checks', 'can' => ['detection.view']],
-    ['href' => route('laporan.index'), 'active' => request()->routeIs('laporan.index'), 'label' => 'Laporan', 'icon' => 'file-text', 'can' => ['reports.view']],
+    ['href' => route('hasildeteksi.index'), 'active' => request()->routeIs('hasildeteksi.*') || request()->routeIs('laporan.index'), 'label' => 'Hasil Deteksi', 'icon' => 'list-checks', 'can' => ['detection.view', 'reports.view']],
     ['href' => route('riwayat.index'), 'active' => request()->routeIs('riwayat.*'), 'label' => 'Riwayat', 'icon' => 'clock', 'can' => ['history.view']],
     ['href' => route('backup.index'), 'active' => request()->routeIs('backup.*'), 'label' => 'Backup Database', 'icon' => 'database-backup', 'can' => ['database.backup']],
   ])->filter(fn ($item) => $user?->canAny($item['can']))->values();
@@ -60,19 +59,24 @@
 
     {{-- Footer --}}
     <div class="mt-auto px-3 pb-4">
-      <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button
-          type="submit"
-          class="w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-muted hover:bg-surface2
-                 focus-visible:outline-none focus-visible:ring-2 ring-app"
-        >
-          <span class="inline-flex items-center gap-3">
-            <x-lucide-log-out class="h-[18px] w-[18px]" />
-            Logout
-          </span>
-        </button>
-      </form>
+      <button
+        type="button"
+        @click="$dispatch('open-confirm-dialog', {
+          title: 'Konfirmasi Logout',
+          message: 'Sesi Anda akan diakhiri. Lanjutkan logout?',
+          action: @js(route('logout')),
+          method: 'POST',
+          icon: 'logout',
+          tone: 'danger'
+        })"
+        class="group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-left text-sm font-medium text-muted transition-all duration-200 ease-out hover:-translate-y-[1px] hover:bg-[rgba(248,113,113,0.12)] hover:text-[color:var(--danger)] hover:shadow-[0_14px_40px_rgba(248,113,113,0.14)] focus-visible:outline-none focus-visible:ring-2 ring-app"
+      >
+        <span class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 bg-[linear-gradient(110deg,transparent,rgba(248,113,113,0.14),transparent)]"></span>
+        <span class="relative inline-flex items-center gap-3">
+          <x-lucide-log-out class="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
+          Logout
+        </span>
+      </button>
     </div>
   </div>
 </aside>
@@ -82,7 +86,7 @@
   <div class="absolute inset-0 bg-black/40" @click="mobileOpen=false" x-transition.opacity></div>
 
   <aside
-    class="absolute left-3 top-3 bottom-3 w-[85%] max-w-xs rounded-3xl bg-surface shadow-soft"
+    class="absolute left-3 top-3 bottom-3 flex w-[85%] max-w-xs flex-col rounded-3xl bg-surface shadow-soft"
     x-transition:enter="transition transform duration-200 ease-out"
     x-transition:enter-start="-translate-x-[110%]"
     x-transition:enter-end="translate-x-0"
@@ -141,19 +145,24 @@
     </nav>
 
     <div class="mt-auto px-3 pb-4">
-      <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button
-          type="submit"
-          class="w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-muted hover:bg-surface2
-                 focus-visible:outline-none focus-visible:ring-2 ring-app"
-        >
-          <span class="inline-flex items-center gap-3">
-            <x-lucide-log-out class="h-[18px] w-[18px]" />
-            Logout
-          </span>
-        </button>
-      </form>
+      <button
+        type="button"
+        @click="$dispatch('open-confirm-dialog', {
+          title: 'Konfirmasi Logout',
+          message: 'Sesi Anda akan diakhiri. Lanjutkan logout?',
+          action: @js(route('logout')),
+          method: 'POST',
+          icon: 'logout',
+          tone: 'danger'
+        })"
+        class="group relative flex w-full items-center gap-3 overflow-hidden rounded-2xl px-4 py-3 text-left text-sm font-medium text-muted transition-all duration-200 ease-out hover:-translate-y-[1px] hover:bg-[rgba(248,113,113,0.12)] hover:text-[color:var(--danger)] hover:shadow-[0_14px_40px_rgba(248,113,113,0.14)] focus-visible:outline-none focus-visible:ring-2 ring-app"
+      >
+        <span class="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-200 group-hover:opacity-100 bg-[linear-gradient(110deg,transparent,rgba(248,113,113,0.14),transparent)]"></span>
+        <span class="relative inline-flex items-center gap-3">
+          <x-lucide-log-out class="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
+          Logout
+        </span>
+      </button>
     </div>
   </aside>
 </div>

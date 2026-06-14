@@ -46,16 +46,19 @@
                             {{ __('Profile') }}
                         </x-dropdown-link>
 
-                        <!-- Authentication -->
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-
-                            <x-dropdown-link :href="route('logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();">
-                                {{ __('Log Out') }}
-                            </x-dropdown-link>
-                        </form>
+                        <x-dropdown-link
+                            href="#"
+                            x-on:click.prevent="$dispatch('open-confirm-dialog', {
+                                title: 'Konfirmasi Logout',
+                                message: 'Sesi Anda akan diakhiri. Lanjutkan logout?',
+                                action: @js(route('logout')),
+                                method: 'POST',
+                                icon: 'logout',
+                                tone: 'danger'
+                            })"
+                        >
+                            {{ __('Log Out') }}
+                        </x-dropdown-link>
                     </x-slot>
                 </x-dropdown>
             </div>
@@ -94,16 +97,19 @@
                     {{ __('Profile') }}
                 </x-responsive-nav-link>
 
-                <!-- Authentication -->
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-
-                    <x-responsive-nav-link :href="route('logout')"
-                            onclick="event.preventDefault();
-                                        this.closest('form').submit();">
-                        {{ __('Log Out') }}
-                    </x-responsive-nav-link>
-                </form>
+                <x-responsive-nav-link
+                    href="#"
+                    x-on:click.prevent="$dispatch('open-confirm-dialog', {
+                        title: 'Konfirmasi Logout',
+                        message: 'Sesi Anda akan diakhiri. Lanjutkan logout?',
+                        action: @js(route('logout')),
+                        method: 'POST',
+                        icon: 'logout',
+                        tone: 'danger'
+                    })"
+                >
+                    {{ __('Log Out') }}
+                </x-responsive-nav-link>
             </div>
         </div>
     </div>

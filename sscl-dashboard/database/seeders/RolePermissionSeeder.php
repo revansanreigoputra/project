@@ -17,6 +17,7 @@ class RolePermissionSeeder extends Seeder
 
     public const PERMISSIONS = [
         'dashboard.view',
+        'dashboard.view-all',
         'users.manage',
         'roles.manage',
         'permissions.manage',
@@ -39,6 +40,7 @@ class RolePermissionSeeder extends Seeder
 
     public const PETUGAS_PERMISSIONS = [
         'dashboard.view',
+        'dashboard.view-all',
         'scan.upload',
         'scan.run',
         'detection.view',

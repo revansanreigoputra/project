@@ -2,10 +2,9 @@
   $title = match (true) {
     request()->routeIs('dashboard') => 'Dashboard',
     request()->routeIs('scan.index') => 'Upload Data',
-    request()->routeIs('hasildeteksi.index') => 'Hasil Deteksi',
+    request()->routeIs('hasildeteksi.*') || request()->routeIs('laporan.index') => 'Hasil Deteksi',
     request()->routeIs('riwayat.show') => 'Detail Riwayat',
     request()->routeIs('riwayat.*') => 'Riwayat',
-    request()->routeIs('laporan.index') => 'Laporan',
     request()->routeIs('backup.*') => 'Backup Database',
     request()->routeIs('admin.users.*') => 'Manajemen Pengguna',
     request()->routeIs('admin.roles.*') => 'Manajemen Role',

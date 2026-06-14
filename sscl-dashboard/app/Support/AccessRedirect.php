@@ -29,9 +29,8 @@ class AccessRedirect
         $destinations = [
             'dashboard' => ['dashboard.view'],
             'scan.index' => ['scan.upload', 'scan.run'],
-            'hasildeteksi.index' => ['detection.view'],
+            'hasildeteksi.index' => ['detection.view', 'reports.view'],
             'riwayat.index' => ['history.view'],
-            'laporan.index' => ['reports.view'],
             'backup.index' => ['database.backup'],
         ];
 

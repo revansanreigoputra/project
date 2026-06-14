@@ -22,6 +22,42 @@ Alpine.data('ui', () => ({
   },
 }));
 
+Alpine.data('confirmDialog', () => ({
+  isOpen: false,
+  dialog: {
+    title: '',
+    message: '',
+    subject: '',
+    action: '',
+    method: 'POST',
+    confirmLabel: 'Konfirmasi',
+    cancelLabel: 'Batal',
+    icon: 'alert',
+    tone: 'danger',
+  },
+
+  open(config = {}) {
+    this.dialog = {
+      ...this.dialog,
+      title: config.title || 'Konfirmasi Aksi',
+      message: config.message || 'Apakah Anda yakin ingin melanjutkan?',
+      subject: config.subject || '',
+      action: config.action || '',
+      method: (config.method || 'POST').toUpperCase(),
+      confirmLabel: config.confirmLabel || 'Konfirmasi',
+      cancelLabel: config.cancelLabel || 'Batal',
+      icon: config.icon || 'alert',
+      tone: config.tone || 'danger',
+    };
+    this.isOpen = true;
+    this.$nextTick(() => this.$refs.cancelButton?.focus());
+  },
+
+  close() {
+    this.isOpen = false;
+  },
+}));
+
 Alpine.data('backupConsole', (config = {}) => ({
   endpoint: config.endpoint,
   token: config.token,

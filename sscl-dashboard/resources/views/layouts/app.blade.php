@@ -31,6 +31,8 @@
             <main>
                 {{ $slot }}
             </main>
+
+            <x-confirmation-dialog />
         </div>
     </body>
 </html>

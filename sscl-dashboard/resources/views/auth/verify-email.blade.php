@@ -20,12 +20,20 @@
             </div>
         </form>
 
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-
-            <button type="submit" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                {{ __('Log Out') }}
-            </button>
-        </form>
+        <button
+            type="button"
+            x-data
+            x-on:click.prevent="$dispatch('open-confirm-dialog', {
+                title: 'Konfirmasi Logout',
+                message: 'Sesi Anda akan diakhiri. Lanjutkan logout?',
+                action: @js(route('logout')),
+                method: 'POST',
+                icon: 'logout',
+                tone: 'danger'
+            })"
+            class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+            {{ __('Log Out') }}
+        </button>
     </div>
 </x-guest-layout>

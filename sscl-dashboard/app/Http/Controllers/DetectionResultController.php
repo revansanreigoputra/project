@@ -16,9 +16,11 @@ class DetectionResultController extends Controller
             'per_page' => ['nullable', 'integer', 'in:10,25,50,100'],
         ]);
 
-        $detectionResult = DetectionResult::with('scanUpload')
+        $baseQuery = DetectionResult::query()
             ->visibleTo($request->user())
-            ->completed()
+            ->completed();
+        $detectionResult = (clone $baseQuery)
+            ->with(['scanUpload.user', 'user'])
             ->latest('processed_at')
             ->latest('id')
             ->first();
@@ -34,7 +36,26 @@ class DetectionResultController extends Controller
             $prediction['summary'] = $table['summary'];
         }
 
+        $recentDetections = (clone $baseQuery)
+            ->with(['scanUpload.user', 'user'])
+            ->latest('processed_at')
+            ->latest('id')
+            ->take(8)
+            ->get()
+            ->map(fn (DetectionResult $result) => $this->detectionSummary($result))
+            ->values();
+        $completedResults = (clone $baseQuery)->get([
+            'id',
+            'total',
+            'normal_count',
+            'malware_count',
+            'unknown_count',
+            'average_confidence',
+        ]);
+        $totalRows = (int) $completedResults->sum('total');
+
         return view('pages.hasildeteksi.index', [
+            'detectionResult' => $detectionResult,
             'prediction' => $prediction,
             'resultsPaginator' => $table['paginator'] ?? null,
             'labelOptions' => $table['label_options'] ?? collect(['Normal']),
@@ -44,6 +65,16 @@ class DetectionResultController extends Controller
                 'per_page' => DetectionResultTable::perPage($filters['per_page'] ?? null),
             ],
             'perPageOptions' => DetectionResultTable::PER_PAGE_OPTIONS,
+            'recentDetections' => $recentDetections,
+            'historySummary' => [
+                'total_detections' => $completedResults->count(),
+                'total_rows' => $totalRows,
+                'normal_rows' => (int) $completedResults->sum('normal_count'),
+                'malware_rows' => (int) $completedResults->sum('malware_count'),
+                'unknown_rows' => (int) $completedResults->sum('unknown_count'),
+                'average_confidence' => round((float) ($completedResults->avg('average_confidence') ?: 0), 2),
+                'malware_percent' => $totalRows > 0 ? round(((int) $completedResults->sum('malware_count') / $totalRows) * 100, 2) : 0,
+            ],
         ]);
     }
 
@@ -79,5 +110,37 @@ class DetectionResultController extends Controller
             ],
             'perPageOptions' => DetectionResultTable::PER_PAGE_OPTIONS,
         ]);
+    }
+
+    private function detectionSummary(DetectionResult $result): array
+    {
+        $summary = DetectionResultTable::summary($result);
+        $total = (int) ($result->total ?? 0);
+        $normal = (int) ($summary['normal'] ?? 0);
+        $malware = (int) ($summary['malware'] ?? 0);
+
+        return [
+            'id' => $result->id,
+            'file_name' => $result->file_name ?? $result->scanUpload?->original_name ?? '-',
+            'processed_at' => $this->formatDateTime($result->processed_at ?? $result->created_at),
+            'total' => $total,
+            'normal' => $normal,
+            'malware' => $malware,
+            'unknown' => (int) ($summary['unknown'] ?? 0),
+            'normal_percent' => $total > 0 ? number_format(($normal / $total) * 100, 2, ',', '.') : '0,00',
+            'malware_percent' => $total > 0 ? number_format(($malware / $total) * 100, 2, ',', '.') : '0,00',
+            'average_confidence' => number_format((float) ($summary['average_confidence'] ?? $result->average_confidence ?? 0), 2, ',', '.'),
+            'status' => $result->status,
+            'user' => $result->user?->name ?? $result->scanUpload?->user?->name ?? '-',
+            'url' => route('hasildeteksi.show', $result),
+            'download_url' => $result->scan_upload_id ? route('riwayat.download', ['scanUpload' => $result->scan_upload_id, 'mode' => 'after']) : null,
+        ];
+    }
+
+    private function formatDateTime($dateTime): string
+    {
+        return $dateTime
+            ? $dateTime->copy()->timezone('Asia/Jakarta')->format('d/m/Y H:i')
+            : '-';
     }
 }

@@ -184,7 +184,7 @@
               class="inline-flex items-center gap-2 rounded-xl bg-[color:var(--danger)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
             >
               <x-lucide-trash-2 class="h-4 w-4" />
-              Hapus
+              Konfirmasi
             </button>
           </form>
         </div>
