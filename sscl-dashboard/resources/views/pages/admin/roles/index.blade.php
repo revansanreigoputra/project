@@ -2,7 +2,19 @@
 @section('title', 'Manajemen Role')
 
 @section('page')
-  <div class="space-y-6">
+  <div 
+    class="space-y-6"
+    x-data="{
+      deleteModalOpen: false,
+      deleteFormAction: '',
+      deleteRoleName: '',
+      openDeleteModal(action, name) {
+        this.deleteFormAction = action;
+        this.deleteRoleName = name;
+        this.deleteModalOpen = true;
+      }
+    }"
+  >
     <div class="overflow-hidden rounded-3xl bg-surface shadow-soft">
       <div class="relative p-6 md:p-7">
         <div class="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,var(--accent),var(--primary),var(--info))]"></div>
@@ -74,13 +86,17 @@
               <a href="{{ route('admin.roles.edit', $role) }}" class="grid h-10 w-10 place-items-center rounded-2xl bg-primary-soft text-primary transition hover:-translate-y-[1px]" aria-label="Edit role">
                 <x-lucide-pencil class="h-4 w-4" />
               </a>
-              <form method="POST" action="{{ route('admin.roles.destroy', $role) }}" onsubmit="return confirm('Hapus role ini?')">
-                @csrf
-                @method('DELETE')
-                <button @disabled($isSystemRole) type="submit" class="grid h-10 w-10 place-items-center rounded-2xl bg-[rgba(248,113,113,0.14)] text-[color:var(--danger)] transition hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-45" aria-label="Hapus role">
-                  <x-lucide-trash-2 class="h-4 w-4" />
-                </button>
-              </form>
+              
+              {{-- Tombol Hapus Diubah Menjadi Trigger Modal --}}
+              <button 
+                type="button" 
+                @disabled($isSystemRole) 
+                @click="openDeleteModal(@js(route('admin.roles.destroy', $role)), @js($role->name))"
+                class="grid h-10 w-10 place-items-center rounded-2xl bg-[rgba(248,113,113,0.14)] text-[color:var(--danger)] transition hover:-translate-y-[1px] disabled:cursor-not-allowed disabled:opacity-45" 
+                aria-label="Hapus role"
+              >
+                <x-lucide-trash-2 class="h-4 w-4" />
+              </button>
             </div>
           </div>
 
@@ -105,5 +121,62 @@
     <div class="rounded-3xl bg-surface px-5 py-4 shadow-soft">
       {{ $roles->links() }}
     </div>
+
+    {{-- Modal Konfirmasi Hapus Role --}}
+    <div
+      x-show="deleteModalOpen"
+      x-cloak
+      class="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4 backdrop-blur-sm"
+      x-transition.opacity
+    >
+      <div
+        @click.outside="deleteModalOpen = false"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="opacity-0 translate-y-3 scale-95"
+        x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+        x-transition:leave="transition ease-in duration-150"
+        x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+        x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+        class="w-full max-w-md overflow-hidden rounded-3xl border border-app bg-surface shadow-soft"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="p-6">
+          <div class="flex items-start gap-4">
+            <div class="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[rgba(248,113,113,0.14)] text-[color:var(--danger)]">
+              <x-lucide-shield-alert class="h-6 w-6" />
+            </div>
+            <div class="min-w-0">
+              <div class="text-lg font-semibold">Hapus Role?</div>
+              <div class="mt-2 text-sm leading-6 text-muted">
+                Role <span class="font-semibold text-app" x-text="deleteRoleName"></span> akan dihapus secara permanen dari sistem.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-3 border-t border-app bg-surface2 px-6 py-4">
+          <button
+            type="button"
+            @click="deleteModalOpen = false"
+            class="rounded-xl border border-app px-5 py-2 text-sm font-semibold hover:bg-surface transition-colors"
+          >
+            Batal
+          </button>
+          <form method="POST" :action="deleteFormAction">
+            @csrf
+            @method('DELETE')
+            <button
+              type="submit"
+              class="inline-flex items-center gap-2 rounded-xl bg-[color:var(--danger)] px-5 py-2 text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+            >
+              <x-lucide-trash-2 class="h-4 w-4" />
+              Hapus
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
   </div>
 @endsection
