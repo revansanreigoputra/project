@@ -73,6 +73,16 @@
     x-data="{
       detailOpen: false,
       activeDetail: { title: '', description: '', items: [] },
+      latestActivities: @js($latestActivities->values()),
+      activityPage: 1,
+      activityPerPage: 4,
+      get activityTotalPages() {
+        return Math.max(1, Math.ceil(this.latestActivities.length / this.activityPerPage));
+      },
+      get pagedActivities() {
+        const start = (this.activityPage - 1) * this.activityPerPage;
+        return this.latestActivities.slice(start, start + this.activityPerPage);
+      },
       openDetail(detail) {
         this.activeDetail = {
           title: detail?.title || 'Detail',
@@ -332,36 +342,70 @@
             <div class="text-sm font-semibold">Aktivitas Terbaru</div>
             <div class="mt-1 text-xs text-muted">Upload dan proses yang terakhir berubah.</div>
           </div>
-          <x-lucide-activity class="h-5 w-5 text-primary" />
+          <div class="flex items-center gap-2">
+            <span class="rounded-full bg-surface2 px-3 py-1 text-xs font-semibold text-muted" x-text="latestActivities.length + ' data'"></span>
+            <x-lucide-activity class="h-5 w-5 text-primary" />
+          </div>
         </div>
 
-        <div class="mt-5 space-y-3">
-          @forelse ($latestActivities as $activity)
-            <a href="{{ $activity['url'] }}" class="group block rounded-2xl border border-app bg-surface2 px-4 py-3 transition-colors hover:bg-surface">
-              <div class="flex items-start gap-3">
-                <span
-                  @class([
-                    'mt-1 h-2.5 w-2.5 shrink-0 rounded-full',
-                    'bg-[color:var(--danger)]' => $activity['tone'] === 'danger',
-                    'bg-[color:var(--accent)]' => $activity['tone'] === 'accent',
-                    'bg-[color:var(--warning)]' => $activity['tone'] === 'warning',
-                  ])
-                ></span>
-                <div class="min-w-0 flex-1">
-                  <div class="truncate text-sm font-semibold" title="{{ $activity['title'] }}">{{ $activity['title'] }}</div>
-                  <div class="mt-1 text-xs leading-5 text-muted">{{ $activity['meta'] }}</div>
-                  <div class="mt-1 text-xs font-semibold text-muted">{{ $activity['time'] }}</div>
-                </div>
-                <x-lucide-chevron-right class="h-4 w-4 text-muted transition-transform group-hover:translate-x-0.5" />
-              </div>
-            </a>
-          @empty
+        <div class="mt-5 space-y-2">
+          <template x-if="latestActivities.length === 0">
             <div class="rounded-3xl border border-dashed border-app bg-surface2 px-5 py-8 text-center">
               <x-lucide-activity class="mx-auto h-10 w-10 text-muted" />
               <div class="mt-3 text-sm font-semibold">Belum ada aktivitas</div>
               <div class="mt-1 text-xs leading-5 text-muted">Aktivitas akan muncul setelah ada upload atau deteksi.</div>
             </div>
-          @endforelse
+          </template>
+
+          <template x-for="activity in pagedActivities" :key="activity.title + activity.time">
+            <a :href="activity.url" class="group block rounded-2xl border border-app bg-surface2 px-4 py-3 transition-colors hover:bg-surface">
+              <div class="flex items-start gap-3">
+                <span
+                  class="mt-1 h-2.5 w-2.5 shrink-0 rounded-full"
+                  :class="{
+                    'bg-[color:var(--danger)]': activity.tone === 'danger',
+                    'bg-[color:var(--accent)]': activity.tone === 'accent',
+                    'bg-[color:var(--warning)]': activity.tone === 'warning',
+                  }"
+                ></span>
+                <div class="min-w-0 flex-1">
+                  <div class="truncate text-sm font-semibold" :title="activity.title" x-text="activity.title"></div>
+                  <div class="mt-1 line-clamp-2 text-xs leading-5 text-muted" x-text="activity.meta"></div>
+                  <div class="mt-1 text-xs font-semibold text-muted" x-text="activity.time"></div>
+                </div>
+                <x-lucide-chevron-right class="h-4 w-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
+              </div>
+            </a>
+          </template>
+        </div>
+
+        <div
+          x-show="latestActivities.length > activityPerPage"
+          class="mt-5 flex items-center justify-between gap-3 border-t border-app pt-4 text-xs text-muted"
+        >
+          <span>
+            Halaman <span class="font-semibold text-app" x-text="activityPage"></span>/<span x-text="activityTotalPages"></span>
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              @click="activityPage = Math.max(1, activityPage - 1)"
+              :disabled="activityPage === 1"
+              class="inline-grid h-9 w-9 place-items-center rounded-xl border border-app transition-colors hover:bg-surface2 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Aktivitas sebelumnya"
+            >
+              <x-lucide-chevron-left class="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              @click="activityPage = Math.min(activityTotalPages, activityPage + 1)"
+              :disabled="activityPage === activityTotalPages"
+              class="inline-grid h-9 w-9 place-items-center rounded-xl border border-app transition-colors hover:bg-surface2 disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Aktivitas berikutnya"
+            >
+              <x-lucide-chevron-right class="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </div>
     </section>

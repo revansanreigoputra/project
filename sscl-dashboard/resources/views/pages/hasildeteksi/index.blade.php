@@ -62,6 +62,16 @@
             rowDetail: { probabilities: [] },
             detectionModalOpen: false,
             detectionDetail: {},
+            recentDetections: @js($recentDetections->values()),
+            recentPage: 1,
+            recentPerPage: 3,
+            get recentTotalPages() {
+                return Math.max(1, Math.ceil(this.recentDetections.length / this.recentPerPage));
+            },
+            get pagedRecentDetections() {
+                const start = (this.recentPage - 1) * this.recentPerPage;
+                return this.recentDetections.slice(start, start + this.recentPerPage);
+            },
             openRowDetail(payload) {
                 this.rowDetail = payload;
                 this.rowDetailOpen = true;
@@ -70,9 +80,6 @@
                 this.detectionDetail = payload;
                 this.detectionModalOpen = true;
             },
-            printReport() {
-                window.print();
-            }
         }"
     >
         <section class="overflow-hidden rounded-3xl border border-app bg-surface shadow-soft">
@@ -94,7 +101,7 @@
                         </div>
                     </div>
 
-                    <div class="flex flex-wrap gap-2 print:hidden">
+                    <div class="flex flex-wrap gap-2">
                         @if ($latestDownloadUrl && auth()->user()?->can('reports.download'))
                             <a
                                 href="{{ $latestDownloadUrl }}"
@@ -109,15 +116,6 @@
                                 Unduh CSV
                             </button>
                         @endif
-
-                        <button
-                            type="button"
-                            @click="printReport()"
-                            class="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-                        >
-                            <x-lucide-printer class="h-4 w-4" />
-                            Cetak Laporan
-                        </button>
                     </div>
                 </div>
             </div>
@@ -199,44 +197,79 @@
                         <div class="text-sm font-semibold">Riwayat Terbaru</div>
                         <div class="mt-1 text-xs text-muted">Klik item untuk ringkasan cepat.</div>
                     </div>
-                    <x-lucide-history class="h-5 w-5 text-primary" />
+                    <div class="flex items-center gap-2">
+                        <span class="rounded-full bg-surface2 px-3 py-1 text-xs font-semibold text-muted" x-text="recentDetections.length + ' data'"></span>
+                        <x-lucide-history class="h-5 w-5 text-primary" />
+                    </div>
                 </div>
 
                 <div class="mt-5 space-y-3">
-                    @forelse ($recentDetections as $item)
-                        <button
-                            type="button"
-                            @click="openDetectionDetail(@js($item))"
-                            class="group w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 ring-app"
-                        >
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <div class="truncate text-sm font-semibold" title="{{ $item['file_name'] }}">{{ $item['file_name'] }}</div>
-                                    <div class="mt-1 text-xs leading-5 text-muted">{{ $item['processed_at'] }} - {{ $item['user'] }}</div>
-                                </div>
-                                <span
-                                    @class([
-                                        'shrink-0 rounded-full px-3 py-1 text-xs font-semibold',
-                                        'bg-[rgba(248,113,113,0.16)] text-[color:var(--danger)]' => $item['malware'] > 0,
-                                        'bg-[rgba(34,197,94,0.16)] text-[color:var(--accent)]' => $item['malware'] <= 0,
-                                    ])
-                                >
-                                    {{ $item['malware'] > 0 ? 'Malware' : 'Aman' }}
-                                </span>
-                            </div>
-                            <div class="mt-3 grid grid-cols-3 gap-2 text-xs text-muted">
-                                <span>Total <span class="font-semibold text-app">{{ $formatNumber($item['total']) }}</span></span>
-                                <span>Normal <span class="font-semibold text-app">{{ $formatNumber($item['normal']) }}</span></span>
-                                <span>Malware <span class="font-semibold text-app">{{ $formatNumber($item['malware']) }}</span></span>
-                            </div>
-                        </button>
-                    @empty
+                    <template x-if="recentDetections.length === 0">
                         <div class="rounded-3xl border border-dashed border-app bg-surface2 px-5 py-8 text-center">
                             <x-lucide-history class="mx-auto h-10 w-10 text-muted" />
                             <div class="mt-3 text-sm font-semibold">Belum ada riwayat deteksi</div>
                             <div class="mt-1 text-xs leading-5 text-muted">Riwayat terbaru muncul setelah file diproses.</div>
                         </div>
-                    @endforelse
+                    </template>
+
+                    <template x-for="item in pagedRecentDetections" :key="item.id">
+                        <button
+                            type="button"
+                            @click="openDetectionDetail(item)"
+                            class="group w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 ring-app"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <div class="truncate text-sm font-semibold" :title="item.file_name" x-text="item.file_name"></div>
+                                    <div class="mt-1 text-xs leading-5 text-muted">
+                                        <span x-text="item.processed_at"></span>
+                                        <span>-</span>
+                                        <span x-text="item.user"></span>
+                                    </div>
+                                </div>
+                                <span
+                                    class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
+                                    :class="item.malware > 0 ? 'bg-[rgba(248,113,113,0.16)] text-[color:var(--danger)]' : 'bg-[rgba(34,197,94,0.16)] text-[color:var(--accent)]'"
+                                    x-text="item.malware > 0 ? 'Malware' : 'Aman'"
+                                >
+                                </span>
+                            </div>
+                            <div class="mt-3 grid grid-cols-3 gap-2 text-xs text-muted">
+                                <span>Total <span class="font-semibold text-app" x-text="Number(item.total).toLocaleString('id-ID')"></span></span>
+                                <span>Normal <span class="font-semibold text-app" x-text="Number(item.normal).toLocaleString('id-ID')"></span></span>
+                                <span>Malware <span class="font-semibold text-app" x-text="Number(item.malware).toLocaleString('id-ID')"></span></span>
+                            </div>
+                        </button>
+                    </template>
+                </div>
+
+                <div
+                    x-show="recentDetections.length > recentPerPage"
+                    class="mt-5 flex items-center justify-between gap-3 border-t border-app pt-4 text-xs text-muted"
+                >
+                    <span>
+                        Halaman <span class="font-semibold text-app" x-text="recentPage"></span>/<span x-text="recentTotalPages"></span>
+                    </span>
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            @click="recentPage = Math.max(1, recentPage - 1)"
+                            :disabled="recentPage === 1"
+                            class="inline-grid h-9 w-9 place-items-center rounded-xl border border-app transition-colors hover:bg-surface2 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Riwayat sebelumnya"
+                        >
+                            <x-lucide-chevron-left class="h-4 w-4" />
+                        </button>
+                        <button
+                            type="button"
+                            @click="recentPage = Math.min(recentTotalPages, recentPage + 1)"
+                            :disabled="recentPage === recentTotalPages"
+                            class="inline-grid h-9 w-9 place-items-center rounded-xl border border-app transition-colors hover:bg-surface2 disabled:cursor-not-allowed disabled:opacity-40"
+                            aria-label="Riwayat berikutnya"
+                        >
+                            <x-lucide-chevron-right class="h-4 w-4" />
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
