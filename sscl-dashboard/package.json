@@ -4,6 +4,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
+        "postbuild": "node -e \"require('fs').rmSync('public/hot',{force:true})\"",
         "dev": "vite"
     },
     "devDependencies": {

@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix sscl-dashboard run build",
+    "dev": "npm --prefix sscl-dashboard run dev"
+  }
+}
