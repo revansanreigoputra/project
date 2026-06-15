@@ -26,12 +26,40 @@
         $resultsPaginator = $resultsPaginator ?? null;
         $results = $resultsPaginator ? collect($resultsPaginator->items()) : collect($prediction['results'] ?? []);
         $recentDetections = collect($recentDetections ?? []);
-        $tableFilters = $tableFilters ?? ['search' => '', 'label' => 'all', 'per_page' => 10];
+        $tableFilters = array_merge([
+            'search' => '',
+            'label' => 'all',
+            'sort' => 'row',
+            'direction' => 'asc',
+            'per_page' => 10,
+        ], $tableFilters ?? []);
         $perPageOptions = $perPageOptions ?? [10, 25, 50, 100];
         $labelOptions = collect($labelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect(['Normal']));
         $formatNumber = fn ($value) => number_format((float) $value, 0, ',', '.');
         $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
         $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+        $sortOptions = [
+            'row' => 'Row ID',
+            'label' => 'Label',
+            'confidence' => 'Confidence',
+        ];
+        $statusForTone = fn ($tone) => $tone === 'accent' ? 'Aman' : ($tone === 'warning' ? 'Unknown' : 'Perlu Review');
+        $recommendationForTone = fn ($tone) => $tone === 'accent' ? 'Arsipkan' : ($tone === 'warning' ? 'Validasi manual' : 'Prioritaskan');
+        $topProbability = function ($probabilities) {
+            $items = collect($probabilities ?? []);
+
+            if ($items->isEmpty()) {
+                return ['label' => '-', 'value' => 0];
+            }
+
+            $label = $items->sortDesc()->keys()->first();
+
+            return ['label' => $label, 'value' => (float) $items[$label]];
+        };
+        $hasActiveTableFilter = ($tableFilters['search'] ?? '') !== ''
+            || ($tableFilters['label'] ?? 'all') !== 'all'
+            || ($tableFilters['sort'] ?? 'row') !== 'row'
+            || ($tableFilters['direction'] ?? 'asc') !== 'asc';
         $latestFile = $prediction['file_name'] ?? 'Belum ada file diproses';
         $latestProcessedAt = $prediction['processed_at'] ?? '-';
         $latestTotal = (int) ($prediction['total'] ?? 0);
@@ -275,13 +303,13 @@
         </section>
 
         <section class="rounded-3xl border border-app bg-surface p-6 shadow-soft">
-            <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div class="flex flex-col gap-4">
                 <div>
                     <div class="text-sm font-semibold">Tabel Detail Hasil Terakhir</div>
                     <div class="mt-1 text-xs text-muted">Klik baris untuk membuka modal detail probabilitas.</div>
                 </div>
 
-                <form method="GET" action="{{ route('hasildeteksi.index') }}" class="grid flex-1 gap-3 md:grid-cols-[1fr_180px_140px_auto] xl:max-w-4xl">
+                <form method="GET" action="{{ route('hasildeteksi.index') }}" class="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_160px_150px_120px_130px_auto]">
                     <div class="relative">
                         <x-lucide-search class="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
                         <input
@@ -305,6 +333,25 @@
                     </select>
 
                     <select
+                        name="sort"
+                        onchange="this.form.submit()"
+                        class="rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                    >
+                        @foreach ($sortOptions as $value => $label)
+                            <option value="{{ $value }}" @selected($tableFilters['sort'] === $value)>Urut: {{ $label }}</option>
+                        @endforeach
+                    </select>
+
+                    <select
+                        name="direction"
+                        onchange="this.form.submit()"
+                        class="rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                    >
+                        <option value="asc" @selected($tableFilters['direction'] === 'asc')>Naik</option>
+                        <option value="desc" @selected($tableFilters['direction'] === 'desc')>Turun</option>
+                    </select>
+
+                    <select
                         name="per_page"
                         onchange="this.form.submit()"
                         class="rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
@@ -324,8 +371,15 @@
                 </form>
             </div>
 
-            @if (($tableFilters['search'] ?? '') !== '' || ($tableFilters['label'] ?? 'all') !== 'all')
-                <div class="mt-4">
+            <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap gap-2 text-xs font-semibold text-muted">
+                    <span class="rounded-full bg-surface2 px-3 py-1.5">Filter: {{ $hasActiveTableFilter ? 'Aktif' : 'Default' }}</span>
+                    @if ($resultsPaginator)
+                        <span class="rounded-full bg-surface2 px-3 py-1.5">{{ $formatNumber($resultsPaginator->total()) }} baris cocok</span>
+                    @endif
+                </div>
+
+                @if ($hasActiveTableFilter)
                     <a
                         href="{{ route('hasildeteksi.index', ['per_page' => $tableFilters['per_page']]) }}"
                         class="inline-flex items-center gap-2 rounded-2xl border border-app px-4 py-2 text-sm font-semibold transition-colors hover:bg-surface2"
@@ -333,19 +387,21 @@
                         <x-lucide-rotate-ccw class="h-4 w-4" />
                         Reset Filter
                     </a>
-                </div>
-            @endif
+                @endif
+            </div>
 
             <div class="mt-5 overflow-auto rounded-3xl border border-app">
-                <table class="w-full min-w-[860px] text-sm">
+                <table class="w-full min-w-[920px] text-sm">
                     <thead class="sticky top-0 z-10 bg-surface2 text-muted">
                         <tr class="border-b border-app">
+                            <th class="px-4 py-3 text-left font-medium">No</th>
                             <th class="px-4 py-3 text-left font-medium">Row ID</th>
                             <th class="px-4 py-3 text-left font-medium">Label</th>
                             <th class="px-4 py-3 text-left font-medium">Confidence</th>
                             <th class="px-4 py-3 text-left font-medium">Prob. Normal</th>
-                            <th class="px-4 py-3 text-left font-medium">Prob. Label</th>
+                            <th class="px-4 py-3 text-left font-medium">Prob. Prediksi</th>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
+                            <th class="px-4 py-3 text-right font-medium">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-app">
@@ -357,14 +413,23 @@
                                 $confidencePercent = max(0, min(100, ((float) ($result['confidence'] ?? 0)) * 100));
                                 $normalProbability = max(0, min(100, ((float) ($probabilities['Normal'] ?? 0)) * 100));
                                 $labelProbability = max(0, min(100, ((float) ($probabilities[$label] ?? $result['confidence'] ?? 0)) * 100));
+                                $topPrediction = $topProbability($probabilities);
+                                $topPredictionPercent = max(0, min(100, ((float) $topPrediction['value']) * 100));
+                                $rowNumber = $resultsPaginator ? (($resultsPaginator->firstItem() ?? 1) + $loop->index) : $loop->iteration;
                                 $rowPayload = [
+                                    'no' => $rowNumber,
                                     'row' => (string) ($result['row'] ?? $loop->index),
                                     'label' => $label,
-                                    'status' => $tone === 'accent' ? 'Aman' : ($tone === 'warning' ? 'Unknown' : 'Perlu Review'),
+                                    'status' => $statusForTone($tone),
+                                    'recommendation' => $recommendationForTone($tone),
                                     'confidence' => $formatPercent($confidencePercent).'%',
                                     'probNormal' => $formatPercent($normalProbability).'%',
                                     'probLabel' => $formatPercent($labelProbability).'%',
+                                    'topLabel' => $topPrediction['label'],
+                                    'topProbability' => $formatPercent($topPredictionPercent).'%',
                                     'probabilities' => $probabilities
+                                        ->sortDesc()
+                                        ->take(4)
                                         ->map(fn ($value, $name) => [
                                             'label' => $name,
                                             'value' => $formatPercent(((float) $value) * 100).'%',
@@ -373,7 +438,8 @@
                                         ->all(),
                                 ];
                             @endphp
-                            <tr class="cursor-pointer transition-colors hover:bg-surface2/70" @click="openRowDetail(@js($rowPayload))">
+                            <tr class="transition-colors hover:bg-surface2/70">
+                                <td class="px-4 py-3 text-muted">{{ $rowNumber }}</td>
                                 <td class="px-4 py-3 font-semibold">{{ $rowPayload['row'] }}</td>
                                 <td class="px-4 py-3">
                                     <span
@@ -404,7 +470,12 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3 text-muted">{{ $formatPercent($normalProbability) }}%</td>
-                                <td class="px-4 py-3 text-muted">{{ $formatPercent($labelProbability) }}%</td>
+                                <td class="px-4 py-3">
+                                    <div class="font-semibold">{{ $formatPercent($labelProbability) }}%</div>
+                                    <div class="mt-1 max-w-36 truncate text-xs text-muted" title="{{ $topPrediction['label'] }}">
+                                        Top: {{ $topPrediction['label'] }} ({{ $formatPercent($topPredictionPercent) }}%)
+                                    </div>
+                                </td>
                                 <td class="px-4 py-3">
                                     <span
                                         @class([
@@ -416,11 +487,22 @@
                                     >
                                         {{ $rowPayload['status'] }}
                                     </span>
+                                    <div class="mt-1 text-xs text-muted">{{ $rowPayload['recommendation'] }}</div>
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <button
+                                        type="button"
+                                        @click="openRowDetail(@js($rowPayload))"
+                                        class="inline-flex items-center justify-center gap-2 rounded-2xl border border-app px-3 py-2 text-xs font-semibold transition-colors hover:bg-surface2"
+                                    >
+                                        <x-lucide-eye class="h-4 w-4" />
+                                        Detail
+                                    </button>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td class="px-6 py-10 text-center text-muted" colspan="6">
+                                <td class="px-6 py-10 text-center text-muted" colspan="8">
                                     <x-lucide-file-text class="mx-auto h-10 w-10" />
                                     <div class="mt-3 text-sm font-semibold text-app">Belum ada hasil deteksi</div>
                                     <div class="mt-1 text-xs">Upload data untuk mulai menjalankan deteksi malware.</div>
@@ -517,26 +599,42 @@
                 </div>
 
                 <div class="space-y-4 p-6">
-                    <div class="grid gap-3 sm:grid-cols-3">
+                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
                             <div class="text-xs text-muted">Confidence</div>
-                            <div class="mt-1 text-xl font-semibold" x-text="rowDetail.confidence"></div>
+                            <div class="mt-1 text-lg font-semibold sm:text-xl" x-text="rowDetail.confidence"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
                             <div class="text-xs text-muted">Prob. Normal</div>
-                            <div class="mt-1 text-xl font-semibold" x-text="rowDetail.probNormal"></div>
+                            <div class="mt-1 text-lg font-semibold sm:text-xl" x-text="rowDetail.probNormal"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
                             <div class="text-xs text-muted">Prob. Label</div>
-                            <div class="mt-1 text-xl font-semibold" x-text="rowDetail.probLabel"></div>
+                            <div class="mt-1 text-lg font-semibold sm:text-xl" x-text="rowDetail.probLabel"></div>
+                        </div>
+                        <div class="rounded-2xl border border-app bg-surface2 p-4">
+                            <div class="text-xs text-muted">Top Prediksi</div>
+                            <div class="mt-1 truncate text-lg font-semibold sm:text-xl" x-text="rowDetail.topLabel"></div>
+                            <div class="mt-1 text-xs text-muted" x-text="rowDetail.topProbability"></div>
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-app bg-surface2 p-4 text-sm">
+                        <div class="flex items-center justify-between gap-4">
+                            <span class="text-muted">Status</span>
+                            <span class="font-semibold" x-text="rowDetail.status"></span>
+                        </div>
+                        <div class="mt-3 flex items-center justify-between gap-4">
+                            <span class="text-muted">Rekomendasi</span>
+                            <span class="font-semibold" x-text="rowDetail.recommendation"></span>
                         </div>
                     </div>
 
                     <div>
-                        <div class="text-sm font-semibold">Probabilitas Semua Label</div>
-                        <div class="mt-3 max-h-64 overflow-auto rounded-2xl border border-app">
+                        <div class="text-sm font-semibold">Probabilitas Utama</div>
+                        <div class="mt-3 grid grid-cols-2 gap-2">
                             <template x-for="item in rowDetail.probabilities" :key="item.label">
-                                <div class="flex items-center justify-between gap-4 border-b border-app px-4 py-3 last:border-b-0">
+                                <div class="flex items-center justify-between gap-4 rounded-2xl border border-app bg-surface2 px-4 py-3">
                                     <span class="truncate text-sm font-semibold" x-text="item.label"></span>
                                     <span class="text-sm text-muted" x-text="item.value"></span>
                                 </div>

@@ -128,4 +128,189 @@ Alpine.data('backupConsole', (config = {}) => ({
   },
 }));
 
+Alpine.data('scanUploadPage', (config = {}) => ({
+  fileName: '',
+  uploadId: null,
+  uploadUrl: config.uploadUrl,
+  csrfToken: config.csrfToken,
+  errorMessage: '',
+  uploadMessage: '',
+  isDragging: false,
+  isUploading: false,
+  isProcessing: false,
+  results: Array.isArray(config.results) ? config.results : [],
+  resultSearch: '',
+  resultLabel: 'all',
+  resultSort: 'row',
+  sortDirection: 'asc',
+  perPage: 10,
+  page: 1,
+  rowDetailOpen: false,
+  rowDetail: { probabilities: [] },
+
+  get filteredRows() {
+    const search = this.resultSearch.trim().toLowerCase();
+    const rows = this.results.filter((row) => {
+      const labelMatches = this.resultLabel === 'all' || row.label === this.resultLabel;
+      const searchMatches = !search || String(row.search || '').toLowerCase().includes(search);
+
+      return labelMatches && searchMatches;
+    });
+
+    return rows.sort((left, right) => {
+      const leftValue = this.sortValue(left);
+      const rightValue = this.sortValue(right);
+      const comparison = typeof leftValue === 'number' && typeof rightValue === 'number'
+        ? leftValue - rightValue
+        : String(leftValue).localeCompare(String(rightValue), 'id', { numeric: true, sensitivity: 'base' });
+
+      return this.sortDirection === 'desc' ? -comparison : comparison;
+    });
+  },
+
+  get totalPages() {
+    return Math.max(1, Math.ceil(this.filteredRows.length / Number(this.perPage || 10)));
+  },
+
+  get pagedRows() {
+    const currentPage = Math.min(this.page, this.totalPages);
+    const start = (currentPage - 1) * Number(this.perPage || 10);
+
+    return this.filteredRows.slice(start, start + Number(this.perPage || 10));
+  },
+
+  get rangeStart() {
+    return this.filteredRows.length === 0 ? 0 : ((Math.min(this.page, this.totalPages) - 1) * Number(this.perPage || 10)) + 1;
+  },
+
+  get rangeEnd() {
+    return Math.min(this.rangeStart + Number(this.perPage || 10) - 1, this.filteredRows.length);
+  },
+
+  get activeFilterCount() {
+    return [
+      this.resultSearch.trim() !== '',
+      this.resultLabel !== 'all',
+      this.resultSort !== 'row',
+      this.sortDirection !== 'asc',
+    ].filter(Boolean).length;
+  },
+
+  sortValue(row) {
+    if (this.resultSort === 'label') return row.label || '';
+    if (this.resultSort === 'confidence') return Number(row.confidence || 0);
+
+    return Number.isFinite(Number(row.row)) ? Number(row.row) : (row.row || '');
+  },
+
+  resetPage() {
+    this.page = 1;
+  },
+
+  resetResultFilters() {
+    this.resultSearch = '';
+    this.resultLabel = 'all';
+    this.resultSort = 'row';
+    this.sortDirection = 'asc';
+    this.resetPage();
+  },
+
+  toggleSort(field) {
+    if (this.resultSort === field) {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.resultSort = field;
+      this.sortDirection = field === 'confidence' ? 'desc' : 'asc';
+    }
+
+    this.resetPage();
+  },
+
+  openRowDetail(row) {
+    this.rowDetail = row;
+    this.rowDetailOpen = true;
+  },
+
+  chooseFile() {
+    this.$refs.csvFile.click();
+  },
+
+  async setFile(files) {
+    const file = files && files.length ? files[0] : null;
+
+    if (!file) {
+      return;
+    }
+
+    const lowerName = file.name.toLowerCase();
+    const valid = lowerName.endsWith('.csv')
+      || lowerName.endsWith('.txt')
+      || lowerName.endsWith('.xlsx')
+      || lowerName.endsWith('.xls');
+
+    if (!valid) {
+      this.fileName = '';
+      this.uploadId = null;
+      this.uploadMessage = '';
+      this.errorMessage = 'File harus berformat CSV, TXT, XLSX, atau XLS';
+      this.$refs.csvFile.value = '';
+      return;
+    }
+
+    this.fileName = file.name;
+    this.uploadId = null;
+    this.uploadMessage = 'Menyimpan file ke database...';
+    this.errorMessage = '';
+    await this.uploadFile(file);
+  },
+
+  async uploadFile(file) {
+    this.isUploading = true;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(this.uploadUrl, {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'X-CSRF-TOKEN': this.csrfToken,
+        },
+        body: formData,
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        const firstFileError = data.errors && data.errors.file ? data.errors.file[0] : null;
+        throw new Error(firstFileError || data.message || 'File gagal disimpan ke database');
+      }
+
+      this.uploadId = data.id;
+      this.uploadMessage = data.message || 'File tersimpan di database.';
+    } catch (error) {
+      this.fileName = '';
+      this.uploadId = null;
+      this.uploadMessage = '';
+      this.errorMessage = error.message || 'File gagal disimpan ke database';
+      this.$refs.csvFile.value = '';
+    } finally {
+      this.isUploading = false;
+    }
+  },
+
+  async dropFile(event) {
+    this.isDragging = false;
+    const files = event.dataTransfer.files;
+
+    if (files.length) {
+      const transfer = new DataTransfer();
+      transfer.items.add(files[0]);
+      this.$refs.csvFile.files = transfer.files;
+    }
+
+    await this.setFile(files);
+  },
+}));
+
 Alpine.start();

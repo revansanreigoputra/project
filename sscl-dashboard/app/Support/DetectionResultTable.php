@@ -11,6 +11,8 @@ use Illuminate\Support\Str;
 class DetectionResultTable
 {
     public const PER_PAGE_OPTIONS = [10, 25, 50, 100];
+    public const SORT_OPTIONS = ['row', 'label', 'confidence'];
+    public const DIRECTION_OPTIONS = ['asc', 'desc'];
 
     public static function rows(DetectionResult $detectionResult): Collection
     {
@@ -71,7 +73,7 @@ class DetectionResultTable
     {
         $rows = self::rows($detectionResult);
         $summary = self::summary($detectionResult, $rows);
-        $filteredRows = self::filterRows($rows, $filters);
+        $filteredRows = self::sortRows(self::filterRows($rows, $filters), $filters);
         $perPage = self::perPage($filters['per_page'] ?? null);
         $page = LengthAwarePaginator::resolveCurrentPage($pageName);
         $paginator = new LengthAwarePaginator(
@@ -192,15 +194,60 @@ class DetectionResultTable
                 ->filter(fn (array $row) => (string) ($row['label'] ?? 'Unknown') === $label))
             ->when($search !== '', fn (Collection $items) => $items
                 ->filter(function (array $row) use ($search) {
+                    $probabilities = collect($row['probabilities'] ?? [])
+                        ->map(fn ($value, $label) => $label.' '.number_format(((float) $value) * 100, 2, ',', '.'))
+                        ->implode(' ');
                     $haystack = Str::lower(implode(' ', [
                         $row['row'] ?? '',
                         $row['label'] ?? '',
                         number_format(((float) ($row['confidence'] ?? 0)) * 100, 2, ',', '.'),
+                        $probabilities,
                     ]));
 
                     return str_contains($haystack, $search);
                 }))
             ->values();
+    }
+
+    private static function sortRows(Collection $rows, array $filters): Collection
+    {
+        $sort = self::sort($filters['sort'] ?? null);
+        $direction = self::direction($filters['direction'] ?? null);
+
+        return $rows
+            ->sort(function (array $left, array $right) use ($sort, $direction) {
+                $leftValue = self::sortValue($left, $sort);
+                $rightValue = self::sortValue($right, $sort);
+                $comparison = is_numeric($leftValue) && is_numeric($rightValue)
+                    ? ((float) $leftValue <=> (float) $rightValue)
+                    : strnatcasecmp((string) $leftValue, (string) $rightValue);
+
+                return $direction === 'desc' ? -$comparison : $comparison;
+            })
+            ->values();
+    }
+
+    public static function sort($value): string
+    {
+        $sort = (string) $value;
+
+        return in_array($sort, self::SORT_OPTIONS, true) ? $sort : 'row';
+    }
+
+    public static function direction($value): string
+    {
+        $direction = (string) $value;
+
+        return in_array($direction, self::DIRECTION_OPTIONS, true) ? $direction : 'asc';
+    }
+
+    private static function sortValue(array $row, string $sort): float|string|int
+    {
+        return match ($sort) {
+            'label' => Str::lower((string) ($row['label'] ?? 'Unknown')),
+            'confidence' => (float) ($row['confidence'] ?? 0),
+            default => $row['row'] ?? 0,
+        };
     }
 
     private static function normalizeSummaryArray(array $summary, DetectionResult $detectionResult, int $total): array

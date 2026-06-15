@@ -16,7 +16,7 @@
 @endphp
 
 {{-- Desktop --}}
-<aside class="hidden md:fixed md:inset-y-0 md:left-0 md:flex md:w-72 md:flex-col">
+<aside class="hidden 2xl:fixed 2xl:inset-y-0 2xl:left-0 2xl:flex 2xl:w-72 2xl:flex-col">
   <div class="m-4 h-[calc(100vh-32px)] rounded-3xl bg-surface shadow-soft flex flex-col">
     {{-- Brand --}}
     <div class="flex items-center gap-3 px-4 py-4">
@@ -82,7 +82,7 @@
 </aside>
 
 {{-- Mobile overlay + drawer --}}
-<div class="md:hidden fixed inset-0 z-40" x-show="mobileOpen" x-cloak>
+<div class="fixed inset-0 z-40 2xl:hidden" x-show="mobileOpen" x-cloak>
   <div class="absolute inset-0 bg-black/40" @click="mobileOpen=false" x-transition.opacity></div>
 
   <aside

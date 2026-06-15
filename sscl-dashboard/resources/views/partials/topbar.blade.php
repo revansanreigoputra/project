@@ -14,7 +14,7 @@
   $roleLabel = auth()->user()?->getRoleNames()->implode(', ') ?: 'Tanpa Role';
 @endphp
 
-<header class="sticky top-0 md:top-4 z-30" x-data="{ scrolled: false }"
+<header class="sticky top-0 z-30 2xl:top-4" x-data="{ scrolled: false }"
   x-init="
     const onScroll = () => scrolled = window.scrollY > 8;
     onScroll();
@@ -32,7 +32,7 @@
           <button
             type="button"
             @click="mobileOpen=true"
-            class="md:hidden rounded-2xl bg-surface px-3 py-2 shadow-soft text-muted hover:bg-surface2
+            class="rounded-2xl bg-surface px-3 py-2 shadow-soft text-muted hover:bg-surface2 2xl:hidden
                    focus-visible:outline-none focus-visible:ring-2 ring-app"
             aria-label="Open sidebar"
           >

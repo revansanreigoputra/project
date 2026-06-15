@@ -13,6 +13,8 @@ class DetectionResultController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'label' => ['nullable', 'string', 'max:100'],
+            'sort' => ['nullable', 'string', 'in:row,label,confidence'],
+            'direction' => ['nullable', 'string', 'in:asc,desc'],
             'per_page' => ['nullable', 'integer', 'in:10,25,50,100'],
         ]);
 
@@ -31,6 +33,8 @@ class DetectionResultController extends Controller
             $table = DetectionResultTable::make($detectionResult, [
                 'search' => trim((string) ($filters['search'] ?? '')),
                 'label' => $filters['label'] ?? 'all',
+                'sort' => $filters['sort'] ?? 'row',
+                'direction' => $filters['direction'] ?? 'asc',
                 'per_page' => $filters['per_page'] ?? 10,
             ]);
             $prediction['summary'] = $table['summary'];
@@ -62,6 +66,8 @@ class DetectionResultController extends Controller
             'tableFilters' => [
                 'search' => trim((string) ($filters['search'] ?? '')),
                 'label' => $filters['label'] ?? 'all',
+                'sort' => DetectionResultTable::sort($filters['sort'] ?? null),
+                'direction' => DetectionResultTable::direction($filters['direction'] ?? null),
                 'per_page' => DetectionResultTable::perPage($filters['per_page'] ?? null),
             ],
             'perPageOptions' => DetectionResultTable::PER_PAGE_OPTIONS,
@@ -83,6 +89,8 @@ class DetectionResultController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'label' => ['nullable', 'string', 'max:100'],
+            'sort' => ['nullable', 'string', 'in:row,label,confidence'],
+            'direction' => ['nullable', 'string', 'in:asc,desc'],
             'per_page' => ['nullable', 'integer', 'in:10,25,50,100'],
         ]);
 
@@ -93,6 +101,8 @@ class DetectionResultController extends Controller
         $table = DetectionResultTable::make($detectionResult, [
             'search' => trim((string) ($filters['search'] ?? '')),
             'label' => $filters['label'] ?? 'all',
+            'sort' => $filters['sort'] ?? 'row',
+            'direction' => $filters['direction'] ?? 'asc',
             'per_page' => $filters['per_page'] ?? 10,
         ]);
         $prediction = $detectionResult->toPredictionArray();
@@ -106,6 +116,8 @@ class DetectionResultController extends Controller
             'tableFilters' => [
                 'search' => trim((string) ($filters['search'] ?? '')),
                 'label' => $filters['label'] ?? 'all',
+                'sort' => DetectionResultTable::sort($filters['sort'] ?? null),
+                'direction' => DetectionResultTable::direction($filters['direction'] ?? null),
                 'per_page' => DetectionResultTable::perPage($filters['per_page'] ?? null),
             ],
             'perPageOptions' => DetectionResultTable::PER_PAGE_OPTIONS,
