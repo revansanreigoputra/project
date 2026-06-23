@@ -18,6 +18,9 @@ class ScanUpload extends Model
         'extension',
         'size',
         'status',
+        'source',
+        'source_name',
+        'external_reference',
     ];
 
     protected function casts(): array
@@ -25,6 +28,15 @@ class ScanUpload extends Model
         return [
             'size' => 'integer',
         ];
+    }
+
+    public function sourceLabel(): string
+    {
+        if ($this->source === 'api') {
+            return $this->source_name ?: 'API UPA-TIK';
+        }
+
+        return 'Manual';
     }
 
     public function user(): BelongsTo

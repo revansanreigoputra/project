@@ -14,7 +14,7 @@ class DatabaseBackupTest extends TestCase
 
     public function test_petugas_can_create_manual_sql_backup(): void
     {
-        Storage::fake('local');
+        $this->useWritableLocalDisk();
         $petugas = $this->userWithRole(RolePermissionSeeder::PETUGAS_ROLE);
 
         $response = $this->actingAs($petugas)

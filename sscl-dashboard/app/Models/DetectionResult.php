@@ -81,6 +81,8 @@ class DetectionResult extends Model
         return [
             'scan_upload_id' => $this->scan_upload_id,
             'file_name' => $this->file_name ?? $this->scanUpload?->original_name ?? '-',
+            'source' => $this->scanUpload?->source ?? 'manual',
+            'source_label' => $this->scanUpload?->sourceLabel() ?? 'Manual',
             'processed_at' => $this->formattedProcessedAt(),
             'total' => $this->total,
             'summary' => $summary,

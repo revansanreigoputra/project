@@ -46,4 +46,14 @@ return [
         'send_to_user' => env('SCAN_NOTIFICATION_SEND_TO_USER', true),
     ],
 
+    'upa_tik' => [
+        'enabled' => env('UPA_TIK_API_ENABLED', false),
+        'base_url' => env('UPA_TIK_API_BASE_URL'),
+        'endpoint' => env('UPA_TIK_API_ENDPOINT'),
+        'token' => env('UPA_TIK_API_TOKEN'),
+        'timeout' => (int) env('UPA_TIK_API_TIMEOUT', 30),
+        'system_user_email' => env('UPA_TIK_API_SYSTEM_USER_EMAIL'),
+        'source_name' => 'UPA-TIK',
+    ],
+
 ];

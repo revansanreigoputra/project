@@ -269,8 +269,61 @@
           @endcan
         </div>
 
-        <div class="mt-5 overflow-auto rounded-3xl border border-app">
-          <table class="w-full min-w-[760px] text-sm">
+        <div class="mt-5 space-y-3 lg:hidden">
+          @forelse ($recentDetections as $item)
+            @php
+              $detailPayload = [
+                'title' => 'Detail Deteksi',
+                'description' => $item['file_name'],
+                'items' => [
+                  ['title' => 'Diproses', 'meta' => $item['processed_at'], 'value' => $item['status'], 'url' => $item['url']],
+                  ['title' => 'Total Data', 'meta' => ($item['source_label'] ?? 'Manual').' - '.$item['user'], 'value' => $formatNumber($item['total']), 'url' => null],
+                  ['title' => 'Malware', 'meta' => $item['malware_percent'].'%', 'value' => $formatNumber($item['malware']), 'url' => null],
+                ],
+              ];
+            @endphp
+            <button
+              type="button"
+              @click="openDetail(@js($detailPayload))"
+              class="w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 ring-app"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-semibold" title="{{ $item['file_name'] }}">{{ $item['file_name'] }}</div>
+                  <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                    <span class="rounded-full bg-surface px-2 py-0.5 font-semibold text-app">{{ $item['source_label'] ?? 'Manual' }}</span>
+                    <span>{{ $item['processed_at'] }}</span>
+                  </div>
+                  <div class="mt-1 truncate text-xs text-muted">{{ $item['user'] }}</div>
+                </div>
+                <span
+                  @class([
+                    'shrink-0 rounded-full px-3 py-1 text-xs font-semibold',
+                    'bg-[rgba(248,113,113,0.16)] text-[color:var(--danger)]' => (int) $item['malware'] > 0,
+                    'bg-[rgba(34,197,94,0.16)] text-[color:var(--accent)]' => (int) $item['malware'] <= 0,
+                  ])
+                >
+                  {{ (int) $item['malware'] > 0 ? 'Malware' : 'Aman' }}
+                </span>
+              </div>
+
+              <div class="mt-3 grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-3">
+                <span>Total <span class="font-semibold text-app">{{ $formatNumber($item['total']) }}</span></span>
+                <span>Normal <span class="font-semibold text-app">{{ $formatNumber($item['normal']) }}</span></span>
+                <span>Malware <span class="font-semibold text-app">{{ $formatNumber($item['malware']) }}</span></span>
+              </div>
+            </button>
+          @empty
+            <div class="rounded-3xl border border-dashed border-app bg-surface2 px-5 py-8 text-center">
+              <x-lucide-file-text class="mx-auto h-10 w-10 text-muted" />
+              <div class="mt-3 text-sm font-semibold">Belum ada hasil deteksi</div>
+              <div class="mt-1 text-xs text-muted">Upload data untuk mulai mengisi dashboard.</div>
+            </div>
+          @endforelse
+        </div>
+
+        <div class="mt-5 hidden overflow-x-auto rounded-3xl border border-app lg:block">
+          <table class="w-full min-w-[680px] text-sm">
             <thead class="sticky top-0 z-10 bg-surface2 text-muted">
               <tr class="border-b border-app">
                 <th class="px-4 py-3 text-left font-medium">File</th>
@@ -289,7 +342,7 @@
                     'description' => $item['file_name'],
                     'items' => [
                       ['title' => 'Diproses', 'meta' => $item['processed_at'], 'value' => $item['status'], 'url' => $item['url']],
-                      ['title' => 'Total Data', 'meta' => $item['user'], 'value' => $formatNumber($item['total']), 'url' => null],
+                      ['title' => 'Total Data', 'meta' => ($item['source_label'] ?? 'Manual').' - '.$item['user'], 'value' => $formatNumber($item['total']), 'url' => null],
                       ['title' => 'Malware', 'meta' => $item['malware_percent'].'%', 'value' => $formatNumber($item['malware']), 'url' => null],
                     ],
                   ];
@@ -297,7 +350,10 @@
                 <tr class="cursor-pointer transition-colors hover:bg-surface2/70" @click="openDetail(@js($detailPayload))">
                   <td class="px-4 py-3">
                     <div class="max-w-72 truncate font-semibold" title="{{ $item['file_name'] }}">{{ $item['file_name'] }}</div>
-                    <div class="mt-1 text-xs text-muted">{{ $item['user'] }}</div>
+                    <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                      <span class="rounded-full bg-surface px-2 py-0.5 font-semibold text-app">{{ $item['source_label'] ?? 'Manual' }}</span>
+                      <span>{{ $item['user'] }}</span>
+                    </div>
                   </td>
                   <td class="px-4 py-3 text-muted">{{ $item['processed_at'] }}</td>
                   <td class="px-4 py-3">

@@ -51,7 +51,7 @@ class HistoryTest extends TestCase
 
     public function test_history_can_preview_original_uploaded_data(): void
     {
-        Storage::fake('local');
+        $this->useWritableLocalDisk();
 
         $user = $this->userWithRole();
         Storage::put('scan-uploads/source.csv', "source_ip,label\n10.0.0.1,Normal\n");
@@ -86,9 +86,31 @@ class HistoryTest extends TestCase
         $response->assertSeeText('dari 12 data');
     }
 
+    public function test_history_can_filter_by_data_source(): void
+    {
+        $user = $this->userWithRole();
+        $this->createUpload($user, 'manual-source.csv', 'scan-uploads/manual-source.csv');
+
+        $apiUpload = $this->createUpload($user, 'api-source.csv', 'scan-uploads/api/2026/06/api-source.csv');
+        $apiUpload->forceFill([
+            'source' => 'api',
+            'source_name' => 'UPA-TIK',
+            'external_reference' => 'upatik-history-filter',
+        ])->save();
+
+        $response = $this
+            ->actingAs($user)
+            ->get(route('riwayat.index', ['source' => 'api']));
+
+        $response->assertOk();
+        $response->assertSee('api-source.csv');
+        $response->assertSee('API UPA-TIK');
+        $response->assertDontSee('manual-source.csv');
+    }
+
     public function test_history_delete_removes_upload_jobs_and_file(): void
     {
-        Storage::fake('local');
+        $this->useWritableLocalDisk();
 
         $user = $this->userWithRole(RolePermissionSeeder::PETUGAS_ROLE);
         Storage::put('scan-uploads/delete.csv', "row,label\n1,Normal\n");
@@ -112,7 +134,7 @@ class HistoryTest extends TestCase
 
     public function test_history_can_download_original_uploaded_file(): void
     {
-        Storage::fake('local');
+        $this->useWritableLocalDisk();
 
         $user = $this->userWithRole();
         Storage::put('scan-uploads/source.csv', "source_ip,label\n10.0.0.1,Normal\n");
@@ -145,7 +167,7 @@ class HistoryTest extends TestCase
 
     public function test_scan_stores_full_prediction_results_for_history_download(): void
     {
-        Storage::fake('local');
+        $this->useWritableLocalDisk();
 
         $user = $this->userWithRole();
         $results = collect(range(1, 105))
@@ -189,7 +211,7 @@ class HistoryTest extends TestCase
 
     public function test_scan_summary_uses_full_api_summary_when_results_are_limited(): void
     {
-        Storage::fake('local');
+        $this->useWritableLocalDisk();
 
         $user = $this->userWithRole();
         $results = collect(range(1, 100))
@@ -233,7 +255,7 @@ class HistoryTest extends TestCase
 
     public function test_scan_sends_summary_email_after_detection_finishes(): void
     {
-        Storage::fake('local');
+        $this->useWritableLocalDisk();
         Mail::fake();
 
         config([
@@ -393,7 +415,7 @@ class HistoryTest extends TestCase
 
     public function test_detection_results_index_reads_full_stored_csv_with_pagination(): void
     {
-        Storage::fake('local');
+        $this->useWritableLocalDisk();
 
         $user = $this->userWithRole();
         $upload = $this->createUpload($user, 'full-results.csv', 'scan-uploads/full-results.csv');

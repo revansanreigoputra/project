@@ -61,6 +61,7 @@
             || ($tableFilters['sort'] ?? 'row') !== 'row'
             || ($tableFilters['direction'] ?? 'asc') !== 'asc';
         $latestFile = $prediction['file_name'] ?? 'Belum ada file diproses';
+        $latestSourceLabel = $prediction['source_label'] ?? 'Manual';
         $latestProcessedAt = $prediction['processed_at'] ?? '-';
         $latestTotal = (int) ($prediction['total'] ?? 0);
         $latestDownloadUrl = $prediction && ! empty($prediction['scan_upload_id'])
@@ -93,12 +94,24 @@
             recentDetections: @js($recentDetections->values()),
             recentPage: 1,
             recentPerPage: 3,
+            recentSource: 'all',
+            get filteredRecentDetections() {
+                if (this.recentSource === 'all') {
+                    return this.recentDetections;
+                }
+
+                return this.recentDetections.filter((item) => (item.source || 'manual') === this.recentSource);
+            },
             get recentTotalPages() {
-                return Math.max(1, Math.ceil(this.recentDetections.length / this.recentPerPage));
+                return Math.max(1, Math.ceil(this.filteredRecentDetections.length / this.recentPerPage));
             },
             get pagedRecentDetections() {
                 const start = (this.recentPage - 1) * this.recentPerPage;
-                return this.recentDetections.slice(start, start + this.recentPerPage);
+                return this.filteredRecentDetections.slice(start, start + this.recentPerPage);
+            },
+            setRecentSource(source) {
+                this.recentSource = source;
+                this.recentPage = 1;
             },
             openRowDetail(payload) {
                 this.rowDetail = payload;
@@ -121,6 +134,7 @@
                         </div>
                         <h1 class="mt-4 break-words text-2xl font-semibold leading-tight md:text-3xl">{{ $latestFile }}</h1>
                         <div class="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+                            <span class="rounded-full bg-surface2 px-3 py-1 text-xs font-semibold text-app">{{ $latestSourceLabel }}</span>
                             <span>Diproses {{ $latestProcessedAt }}</span>
                             <span class="hidden sm:inline">|</span>
                             <span>{{ $formatNumber($historySummary['total_detections']) }} deteksi selesai tersimpan</span>
@@ -226,17 +240,44 @@
                         <div class="mt-1 text-xs text-muted">Klik item untuk ringkasan cepat.</div>
                     </div>
                     <div class="flex items-center gap-2">
-                        <span class="rounded-full bg-surface2 px-3 py-1 text-xs font-semibold text-muted" x-text="recentDetections.length + ' data'"></span>
+                        <span class="rounded-full bg-surface2 px-3 py-1 text-xs font-semibold text-muted" x-text="filteredRecentDetections.length + ' data'"></span>
                         <x-lucide-history class="h-5 w-5 text-primary" />
                     </div>
                 </div>
 
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        @click="setRecentSource('all')"
+                        class="rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors"
+                        :class="recentSource === 'all' ? 'border-transparent bg-primary text-white' : 'border-app hover:bg-surface2'"
+                    >
+                        Semua
+                    </button>
+                    <button
+                        type="button"
+                        @click="setRecentSource('manual')"
+                        class="rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors"
+                        :class="recentSource === 'manual' ? 'border-transparent bg-primary text-white' : 'border-app hover:bg-surface2'"
+                    >
+                        Manual
+                    </button>
+                    <button
+                        type="button"
+                        @click="setRecentSource('api')"
+                        class="rounded-xl border px-3 py-1.5 text-xs font-semibold transition-colors"
+                        :class="recentSource === 'api' ? 'border-transparent bg-primary text-white' : 'border-app hover:bg-surface2'"
+                    >
+                        API UPA-TIK
+                    </button>
+                </div>
+
                 <div class="mt-5 space-y-3">
-                    <template x-if="recentDetections.length === 0">
+                    <template x-if="filteredRecentDetections.length === 0">
                         <div class="rounded-3xl border border-dashed border-app bg-surface2 px-5 py-8 text-center">
                             <x-lucide-history class="mx-auto h-10 w-10 text-muted" />
                             <div class="mt-3 text-sm font-semibold">Belum ada riwayat deteksi</div>
-                            <div class="mt-1 text-xs leading-5 text-muted">Riwayat terbaru muncul setelah file diproses.</div>
+                            <div class="mt-1 text-xs leading-5 text-muted">Tidak ada data yang cocok dengan filter sumber.</div>
                         </div>
                     </template>
 
@@ -249,7 +290,8 @@
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <div class="truncate text-sm font-semibold" :title="item.file_name" x-text="item.file_name"></div>
-                                    <div class="mt-1 text-xs leading-5 text-muted">
+                                    <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs leading-5 text-muted">
+                                        <span class="rounded-full bg-surface px-2 py-0.5 font-semibold text-app" x-text="item.source_label || 'Manual'"></span>
                                         <span x-text="item.processed_at"></span>
                                         <span>-</span>
                                         <span x-text="item.user"></span>
@@ -262,7 +304,7 @@
                                 >
                                 </span>
                             </div>
-                            <div class="mt-3 grid grid-cols-3 gap-2 text-xs text-muted">
+                            <div class="mt-3 grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-3">
                                 <span>Total <span class="font-semibold text-app" x-text="Number(item.total).toLocaleString('id-ID')"></span></span>
                                 <span>Normal <span class="font-semibold text-app" x-text="Number(item.normal).toLocaleString('id-ID')"></span></span>
                                 <span>Malware <span class="font-semibold text-app" x-text="Number(item.malware).toLocaleString('id-ID')"></span></span>
@@ -272,7 +314,7 @@
                 </div>
 
                 <div
-                    x-show="recentDetections.length > recentPerPage"
+                    x-show="filteredRecentDetections.length > recentPerPage"
                     class="mt-5 flex items-center justify-between gap-3 border-t border-app pt-4 text-xs text-muted"
                 >
                     <span>

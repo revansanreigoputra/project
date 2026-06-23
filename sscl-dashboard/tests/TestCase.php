@@ -5,6 +5,7 @@ namespace Tests;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Str;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -21,5 +22,12 @@ abstract class TestCase extends BaseTestCase
         $user->assignRole($role);
 
         return $user;
+    }
+
+    protected function useWritableLocalDisk(): void
+    {
+        config([
+            'filesystems.disks.local.root' => storage_path('app/testing-local/'.Str::uuid()),
+        ]);
     }
 }

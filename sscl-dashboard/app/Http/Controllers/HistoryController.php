@@ -22,11 +22,12 @@ class HistoryController extends Controller
             'search' => ['nullable', 'string', 'max:100'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'source' => ['nullable', 'in:all,manual,api'],
             'detection_status' => ['nullable', 'in:all,detected,undetected'],
             'per_page' => ['nullable', 'integer', 'in:10,25,50'],
         ]);
 
-        // Filter tanggal memakai zona lokal supaya input date dari UI cocok dengan hari di Indonesia.
+        // Filter tanggal memakai zona lokal.
         $startAt = filled($filters['start_date'] ?? null)
             ? Carbon::parse($filters['start_date'], 'Asia/Jakarta')->startOfDay()->utc()
             : null;
@@ -34,6 +35,7 @@ class HistoryController extends Controller
             ? Carbon::parse($filters['end_date'], 'Asia/Jakarta')->endOfDay()->utc()
             : null;
         $search = trim((string) ($filters['search'] ?? ''));
+        $source = $filters['source'] ?? 'all';
         $detectionStatus = $filters['detection_status'] ?? 'all';
         $perPage = in_array((int) ($filters['per_page'] ?? 10), [10, 25, 50], true)
             ? (int) ($filters['per_page'] ?? 10)
@@ -46,6 +48,9 @@ class HistoryController extends Controller
                 ->latest('id'),
         ])
             ->visibleTo($request->user())
+            ->when($source !== 'all', function ($query) use ($source) {
+                $query->where('source', $source);
+            })
             ->when($search !== '', function ($query) use ($search) {
                 $query->where(function ($searchQuery) use ($search) {
                     $searchQuery
@@ -94,6 +99,7 @@ class HistoryController extends Controller
                 'search' => $search,
                 'start_date' => $filters['start_date'] ?? '',
                 'end_date' => $filters['end_date'] ?? '',
+                'source' => $source,
                 'detection_status' => $detectionStatus,
                 'per_page' => $perPage,
             ],
@@ -257,6 +263,8 @@ class HistoryController extends Controller
             'uploaded_at' => $this->formatDateTime($scanUpload->created_at),
             'processed_at' => $this->formatDateTime($displayDetectionResult?->processed_at ?? $displayDetectionResult?->created_at),
             'file_name' => $scanUpload->original_name,
+            'source' => $scanUpload->source ?? 'manual',
+            'source_label' => $scanUpload->sourceLabel(),
             'size' => $scanUpload->size,
             'total' => $displayDetectionResult?->total ?? 0,
             'normal' => $summary['normal'] ?? 0,

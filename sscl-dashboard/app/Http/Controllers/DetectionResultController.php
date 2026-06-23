@@ -134,6 +134,8 @@ class DetectionResultController extends Controller
         return [
             'id' => $result->id,
             'file_name' => $result->file_name ?? $result->scanUpload?->original_name ?? '-',
+            'source' => $result->scanUpload?->source ?? 'manual',
+            'source_label' => $result->scanUpload?->sourceLabel() ?? 'Manual',
             'processed_at' => $this->formatDateTime($result->processed_at ?? $result->created_at),
             'total' => $total,
             'normal' => $normal,

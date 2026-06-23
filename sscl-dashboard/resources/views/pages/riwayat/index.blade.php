@@ -8,6 +8,7 @@
             'search' => '',
             'start_date' => '',
             'end_date' => '',
+            'source' => 'all',
             'detection_status' => 'all',
             'per_page' => 10,
         ], $filters ?? []);
@@ -50,7 +51,7 @@
 
                 <form method="GET" action="{{ route('riwayat.index') }}" class="mt-5 space-y-4">
                     <div class="grid gap-4 xl:grid-cols-12">
-                        <label class="block xl:col-span-8">
+                        <label class="block xl:col-span-6">
                             <span class="text-xs text-muted">Cari data</span>
                             <div class="relative mt-2">
                                 <x-lucide-search class="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -64,7 +65,19 @@
                             </div>
                         </label>
 
-                        <label class="block xl:col-span-4">
+                        <label class="block xl:col-span-3">
+                            <span class="text-xs text-muted">Sumber data</span>
+                            <select
+                                name="source"
+                                class="mt-2 w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-sm focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary-soft)]"
+                            >
+                                <option value="all" @selected($filters['source'] === 'all')>Semua Sumber</option>
+                                <option value="manual" @selected($filters['source'] === 'manual')>Manual</option>
+                                <option value="api" @selected($filters['source'] === 'api')>API UPA-TIK</option>
+                            </select>
+                        </label>
+
+                        <label class="block xl:col-span-3">
                             <span class="text-xs text-muted">Status data</span>
                             <select
                                 name="detection_status"
@@ -175,6 +188,7 @@
                         @forelse ($historyItems as $item)
                             @php
                                 $status = $item['status'] ?? '-';
+                                $sourceLabel = $item['source_label'] ?? 'Manual';
                             @endphp
                             <tr class="hover:bg-surface2/50">
                                 <td class="hidden px-3 py-3 text-center align-top sm:table-cell">{{ $history instanceof \Illuminate\Contracts\Pagination\Paginator ? $history->firstItem() + $loop->index : $loop->iteration }}</td>
@@ -182,6 +196,7 @@
                                     <div class="min-w-0">
                                         <div class="truncate font-semibold" title="{{ $item['file_name'] }}">{{ $item['file_name'] }}</div>
                                         <div class="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted">
+                                            <span class="rounded-full bg-surface2 px-2 py-0.5 font-semibold text-app">{{ $sourceLabel }}</span>
                                             <span>Upload: {{ $item['uploaded_at'] }}</span>
                                             <span class="hidden md:inline">Proses: {{ $item['processed_at'] }}</span>
                                             <span>{{ $formatFileSize($item['size'] ?? 0) }}</span>

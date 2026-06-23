@@ -2,24 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\DetectionCompletedMail;
 use App\Models\DetectionResult;
 use App\Models\ScanUpload;
-use App\Models\User;
+use App\Services\TrafficDetectionService;
 use App\Support\DetectionResultTable;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Throwable;
 
 class ScanJobController extends Controller
 {
@@ -44,13 +33,16 @@ class ScanJobController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function upload(Request $request): JsonResponse
+    public function upload(Request $request, TrafficDetectionService $trafficDetectionService): JsonResponse
     {
         $validated = $request->validate([
             'file' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:20480'],
         ]);
 
-        $upload = $this->persistUpload($validated['file'], $request->user()?->getAuthIdentifier());
+        $upload = $trafficDetectionService->storeManualUpload(
+            $validated['file'],
+            $request->user()?->getAuthIdentifier()
+        );
 
         return response()->json([
             'id' => $upload->id,
@@ -63,7 +55,7 @@ class ScanJobController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(Request $request, TrafficDetectionService $trafficDetectionService)
     {
         $validated = $request->validate([
             'scan_upload_id' => ['nullable', 'integer', 'exists:scan_uploads,id'],
@@ -76,204 +68,10 @@ class ScanJobController extends Controller
             ]);
         }
 
-        $upload = $this->resolveUpload($request, $validated);
-        $processStartedAt = microtime(true);
-        $apiBaseUrl = rtrim((string) config('services.ml_api.url'), '/');
-        $apiKey = (string) config('services.ml_api.key');
-        $timeout = (int) config('services.ml_api.timeout', 120);
-
-        $detectionResult = DetectionResult::create([
-            'user_id' => $request->user()?->getAuthIdentifier(),
-            'scan_upload_id' => $upload->id,
-            'file_name' => $upload->original_name,
-            'processed_at' => now(),
-            'status' => 'Memproses',
-        ]);
-
-        $upload->update(['status' => 'processing']);
-
-        try {
-            $handle = Storage::readStream($upload->path);
-        } catch (Throwable $exception) {
-            $handle = false;
-        }
-
-        if ($handle === false) {
-            return $this->markScanAsFailed(
-                $detectionResult,
-                $upload,
-                'File yang sudah diupload tidak ditemukan di storage.'
-            );
-        }
-
-        try {
-            $response = Http::timeout($timeout)
-                ->withHeaders(['X-API-KEY' => $apiKey])
-                ->attach('file', $handle, $upload->original_name)
-                ->post($apiBaseUrl.'/predict-file');
-        } catch (ConnectionException $exception) {
-            return $this->markScanAsFailed(
-                $detectionResult,
-                $upload,
-                'Flask ML API belum bisa dihubungi. Pastikan service berjalan di '.$apiBaseUrl.'.'
-            );
-        } finally {
-            if (is_resource($handle)) {
-                fclose($handle);
-            }
-        }
-
-        if ($response->failed()) {
-            return $this->markScanAsFailed(
-                $detectionResult,
-                $upload,
-                $response->json('message') ?: 'Prediksi gagal diproses oleh Flask ML API.'
-            );
-        }
-
-        $payload = $response->json();
-        $results = collect($payload['results'] ?? []);
-        $total = (int) ($payload['total'] ?? $results->count());
-        $summary = $this->summarizePrediction($results, $total, $payload);
-
-        try {
-            $resultsPath = $this->storePredictionResults($detectionResult, $upload, $results);
-        } catch (Throwable $exception) {
-            return $this->markScanAsFailed(
-                $detectionResult,
-                $upload,
-                'Hasil deteksi gagal disimpan ke storage.'
-            );
-        }
-
-        $detectionResult->update([
-            'processed_at' => now(),
-            'total' => $total,
-            'normal_count' => $summary['normal'],
-            'malware_count' => $summary['malware'],
-            'unknown_count' => $summary['unknown'],
-            'normal_percent' => $summary['normal_percent'],
-            'malware_percent' => $summary['malware_percent'],
-            'average_confidence' => $summary['average_confidence'],
-            'status' => 'Selesai',
-            'error_message' => null,
-            'summary' => $summary,
-            'results' => $results->take(100)->values()->all(),
-            'results_path' => $resultsPath,
-        ]);
-
-        $upload->update(['status' => 'processed']);
-        $this->sendDetectionCompletedEmail(
-            $detectionResult->fresh(['scanUpload', 'user']),
-            $summary,
-            microtime(true) - $processStartedAt
-        );
+        $upload = $this->resolveUpload($request, $validated, $trafficDetectionService);
+        $trafficDetectionService->detect($upload, $request->user()?->getAuthIdentifier());
 
         return redirect()->route('scan.index');
-    }
-
-    private function summarizePrediction(Collection $results, int $total, array $payload = []): array
-    {
-        $resultLabels = $results
-            ->groupBy(fn (array $result) => $result['label'] ?? 'Unknown')
-            ->map(fn (Collection $items) => $items->count())
-            ->all();
-        $payloadLabels = collect($payload['summary'] ?? [])
-            ->mapWithKeys(fn ($count, $label) => [(string) $label => (int) $count])
-            ->filter(fn (int $count) => $count > 0)
-            ->all();
-        $labels = $payloadLabels !== [] && (array_sum($payloadLabels) >= $total || $results->count() !== $total)
-            ? $payloadLabels
-            : $resultLabels;
-
-        $averageConfidence = $results->avg(fn (array $result) => (float) ($result['confidence'] ?? 0));
-        $normal = (int) ($payload['total_normal'] ?? $labels['Normal'] ?? 0);
-        $unknown = (int) ($labels['Unknown'] ?? 0);
-        $malwareLabels = collect($labels)
-            ->reject(fn ($count, string $label) => in_array($label, ['Normal', 'Unknown'], true))
-            ->all();
-        $malwareFromLabels = (int) array_sum($malwareLabels);
-        $payloadMalware = array_key_exists('total_malware', $payload) ? (int) $payload['total_malware'] : null;
-        $malware = $payloadMalware !== null && ($normal + $malwareFromLabels + $unknown) !== $total
-            ? $payloadMalware
-            : $malwareFromLabels;
-
-        return [
-            'normal' => $normal,
-            'malware' => $malware,
-            'unknown' => $unknown,
-            'normal_percent' => $total > 0 ? round(($normal / $total) * 100, 2) : 0,
-            'malware_percent' => $total > 0 ? round(($malware / $total) * 100, 2) : 0,
-            'average_confidence' => $averageConfidence ? round($averageConfidence * 100, 2) : 0,
-            'labels' => $labels,
-            'malware_labels' => $malwareLabels,
-        ];
-    }
-
-    private function storePredictionResults(DetectionResult $detectionResult, ScanUpload $upload, Collection $results): string
-    {
-        $path = 'scan-results/'.$detectionResult->id.'-'.$this->downloadFileName($upload, 'hasil-deteksi', 'csv');
-        $stream = fopen('php://temp', 'r+');
-
-        fwrite($stream, "\xEF\xBB\xBF");
-        $probabilityLabels = $this->probabilityLabels($results);
-
-        fputcsv($stream, [
-            'row_id',
-            'label',
-            'confidence_percent',
-            ...array_map(fn (string $label) => 'prob_'.Str::slug($label, '_').'_percent', $probabilityLabels),
-        ]);
-
-        foreach ($results as $index => $result) {
-            fputcsv($stream, [
-                $result['row'] ?? $index,
-                $result['label'] ?? 'Unknown',
-                $this->csvPercent($result['confidence'] ?? 0),
-                ...array_map(
-                    fn (string $label) => $this->csvPercent(($result['probabilities'] ?? [])[$label] ?? 0),
-                    $probabilityLabels
-                ),
-            ]);
-        }
-
-        rewind($stream);
-        $stored = Storage::put($path, $stream);
-        fclose($stream);
-
-        if (! $stored) {
-            throw ValidationException::withMessages([
-                'file' => 'Hasil deteksi gagal disimpan ke storage.',
-            ]);
-        }
-
-        return $path;
-    }
-
-    private function downloadFileName(ScanUpload $upload, string $suffix, string $extension): string
-    {
-        $baseName = pathinfo($upload->original_name, PATHINFO_FILENAME) ?: 'riwayat';
-        $slug = Str::slug($baseName) ?: 'riwayat';
-
-        return $slug.'-'.$suffix.'.'.$extension;
-    }
-
-    private function csvPercent($value): string
-    {
-        return number_format(((float) $value) * 100, 2, '.', '');
-    }
-
-    private function probabilityLabels(Collection $results): array
-    {
-        $labels = $results
-            ->flatMap(fn (array $result) => array_keys($result['probabilities'] ?? []))
-            ->unique()
-            ->values();
-
-        return $labels
-            ->sortBy(fn (string $label) => $label === 'Normal' ? '0' : '1'.$label)
-            ->values()
-            ->all();
     }
 
     private function latestPredictionFor(Request $request): ?array
@@ -293,29 +91,11 @@ class ScanJobController extends Controller
         return $prediction;
     }
 
-    private function persistUpload(UploadedFile $file, ?int $userId): ScanUpload
-    {
-        $path = $file->store('scan-uploads');
-
-        if (! $path) {
-            throw ValidationException::withMessages([
-                'file' => 'File gagal disimpan ke storage.',
-            ]);
-        }
-
-        return ScanUpload::create([
-            'user_id' => $userId,
-            'original_name' => $file->getClientOriginalName(),
-            'stored_name' => basename($path),
-            'path' => $path,
-            'mime_type' => $file->getClientMimeType(),
-            'extension' => $file->getClientOriginalExtension(),
-            'size' => $file->getSize() ?: 0,
-            'status' => 'uploaded',
-        ]);
-    }
-
-    private function resolveUpload(Request $request, array $validated): ScanUpload
+    private function resolveUpload(
+        Request $request,
+        array $validated,
+        TrafficDetectionService $trafficDetectionService
+    ): ScanUpload
     {
         if ($request->filled('scan_upload_id')) {
             $upload = ScanUpload::whereKey($validated['scan_upload_id'])
@@ -331,59 +111,10 @@ class ScanJobController extends Controller
             return $upload;
         }
 
-        return $this->persistUpload($validated['file'], $request->user()?->getAuthIdentifier());
-    }
-
-    private function markScanAsFailed(DetectionResult $detectionResult, ScanUpload $upload, string $message): RedirectResponse
-    {
-        $detectionResult->update([
-            'processed_at' => now(),
-            'status' => 'Gagal',
-            'error_message' => $message,
-        ]);
-
-        $upload->update(['status' => 'failed']);
-
-        return back()->withErrors([
-            'file' => $message,
-        ]);
-    }
-
-    private function sendDetectionCompletedEmail(?DetectionResult $detectionResult, array $summary, float $durationSeconds): void
-    {
-        if (! $detectionResult) {
-            return;
-        }
-
-        $detectionResult->loadMissing(['scanUpload.user', 'user']);
-        $adminEmails = User::query()
-            ->whereHas('roles', fn ($query) => $query->where('name', 'Admin'))
-            ->pluck('email');
-        $recipients = collect()
-            ->merge($adminEmails)
-            ->push($detectionResult->user?->email)
-            ->push($detectionResult->scanUpload?->user?->email)
-            ->push(config('services.scan_notifications.admin_email'));
-        $recipients = $recipients
-            ->filter(fn ($email) => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL))
-            ->unique()
-            ->values();
-
-        if ($recipients->isEmpty()) {
-            return;
-        }
-
-        try {
-            Mail::to($recipients->all())->send(
-                new DetectionCompletedMail($detectionResult, $summary, $durationSeconds)
-            );
-        } catch (Throwable $exception) {
-            Log::warning('Detection completion email could not be sent.', [
-                'detection_result_id' => $detectionResult->id,
-                'recipients' => $recipients->all(),
-                'error' => $exception->getMessage(),
-            ]);
-        }
+        return $trafficDetectionService->storeManualUpload(
+            $validated['file'],
+            $request->user()?->getAuthIdentifier()
+        );
     }
 
     /**

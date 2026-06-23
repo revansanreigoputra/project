@@ -83,7 +83,7 @@ class DashboardController extends Controller
 
                 return [
                     'title' => $upload->original_name,
-                    'meta' => ($result?->status ? 'Deteksi '.$result->status : 'Upload '.$this->displayUploadStatus($upload->status))
+                    'meta' => $upload->sourceLabel().' - '.($result?->status ? 'Deteksi '.$result->status : 'Upload '.$this->displayUploadStatus($upload->status))
                         .' oleh '.($upload->user?->name ?? '-'),
                     'time' => $this->formatDateTime($result?->processed_at ?? $upload->updated_at),
                     'tone' => $result?->malware_count > 0 ? 'danger' : ($result?->status === 'Selesai' ? 'accent' : 'warning'),
@@ -102,7 +102,7 @@ class DashboardController extends Controller
                 'description' => 'Deteksi selesai terbaru dalam cakupan dashboard.',
                 'items' => $recentDetections->map(fn (array $item) => [
                     'title' => $item['file_name'],
-                    'meta' => $item['processed_at'].' - '.$item['total'].' baris',
+                    'meta' => $item['processed_at'].' - '.$item['source_label'].' - '.$item['total'].' baris',
                     'value' => $item['status'],
                     'url' => $item['url'],
                 ])->all(),
@@ -185,6 +185,8 @@ class DashboardController extends Controller
         return [
             'id' => $result->id,
             'file_name' => $result->file_name ?? $result->scanUpload?->original_name ?? '-',
+            'source' => $result->scanUpload?->source ?? 'manual',
+            'source_label' => $result->scanUpload?->sourceLabel() ?? 'Manual',
             'processed_at' => $this->formatDateTime($result->processed_at ?? $result->created_at),
             'total' => $total,
             'normal' => $normal,

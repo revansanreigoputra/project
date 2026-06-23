@@ -19,6 +19,7 @@
         $formatNumber = fn ($value) => number_format((float) $value, 0, ',', '.');
         $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
         $status = $historyItem['status'] ?? '-';
+        $sourceLabel = $historyItem['source_label'] ?? $scanUpload->sourceLabel();
         $labelOptions = collect($afterLabelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect(['Normal']));
         $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
         $canManageOperational = auth()->user()?->can('operational.manage');
@@ -44,7 +45,10 @@
                         Kembali ke Riwayat
                     </a>
 
-                    <div class="mt-4 text-xl font-semibold truncate">{{ $scanUpload->original_name }}</div>
+                    <div class="mt-4 flex flex-wrap items-center gap-2">
+                        <div class="text-xl font-semibold truncate">{{ $scanUpload->original_name }}</div>
+                        <span class="rounded-full bg-surface2 px-3 py-1 text-xs font-semibold text-app">{{ $sourceLabel }}</span>
+                    </div>
                     <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
                         <span>Upload: {{ $historyItem['uploaded_at'] ?? '-' }}</span>
                         <span class="hidden sm:inline">|</span>

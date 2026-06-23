@@ -68,6 +68,7 @@
         $inspectionTone = $isDetected ? 'danger' : ($unknown > 0 ? 'warning' : 'accent');
         $processedAt = $formatDateTime($detectionResult->processed_at ?? $detectionResult->created_at);
         $uploadedAt = $formatDateTime($detectionResult->scanUpload?->created_at);
+        $sourceLabel = $detectionResult->scanUpload?->sourceLabel() ?? 'Manual';
         $labelOptions = collect($labelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect(['Normal']));
         $labelCounts = collect($summary['labels'] ?? [])
             ->map(fn ($count) => (int) $count)
@@ -135,6 +136,7 @@
                                 {{ $detectionResult->file_name ?? $detectionResult->scanUpload?->original_name ?? '-' }}
                             </h1>
                             <div class="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+                                <span class="rounded-full bg-surface2 px-3 py-1 text-xs font-semibold text-app">{{ $sourceLabel }}</span>
                                 <span>ID Hasil #{{ $detectionResult->id }}</span>
                                 <span class="hidden sm:inline">|</span>
                                 <span>Diproses {{ $processedAt }}</span>
@@ -333,6 +335,10 @@
                             <span class="max-w-56 truncate text-right font-semibold" title="{{ $detectionResult->file_name ?? $detectionResult->scanUpload?->original_name ?? '-' }}">
                                 {{ $detectionResult->file_name ?? $detectionResult->scanUpload?->original_name ?? '-' }}
                             </span>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <span class="text-muted">Sumber data</span>
+                            <span class="text-right font-semibold">{{ $sourceLabel }}</span>
                         </div>
                         <div class="flex items-start justify-between gap-4">
                             <span class="text-muted">Waktu upload</span>
