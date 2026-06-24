@@ -30,6 +30,46 @@ return [
 
     'disks' => [
 
+        'vps_dataset' => [
+            'driver' => 'sftp',
+            'host' => env('VPS_HOST'),
+            'port' => (int) env('VPS_PORT', 22),
+            'username' => env('VPS_USERNAME'),
+
+            'privateKey' => env('VPS_PRIVATE_KEY')
+                ? base64_decode(env('VPS_PRIVATE_KEY'))
+                : null,
+
+            'root' => env('VPS_SOURCE_DIR', '/var/www/syslog-datasets'),
+
+            'visibility' => 'private',
+            'directory_visibility' => 'private',
+
+            'timeout' => (int) env('VPS_TIMEOUT', 30),
+            'maxTries' => (int) env('VPS_MAX_TRIES', 3),
+            'throw' => true,
+        ],
+
+        'vps_csv' => [
+            'driver' => 'sftp',
+            'host' => env('VPS_HOST'),
+            'port' => (int) env('VPS_PORT', 22),
+            'username' => env('VPS_USERNAME'),
+
+            'privateKey' => env('VPS_PRIVATE_KEY')
+                ? base64_decode(env('VPS_PRIVATE_KEY'))
+                : null,
+
+            'root' => env('VPS_TARGET_DIR', env('VPS_REMOTE_DIR', '/var/www/revanasanreigo')),
+
+            'visibility' => 'private',
+            'directory_visibility' => 'private',
+
+            'timeout' => (int) env('VPS_TIMEOUT', 30),
+            'maxTries' => (int) env('VPS_MAX_TRIES', 3),
+            'throw' => true,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

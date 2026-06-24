@@ -99,3 +99,12 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// use Illuminate\Support\Facades\Route;
+// use Illuminate\Support\Facades\Storage;
+
+// Route::get('/test-upload-vps', function () {
+//     Storage::disk('vps_csv')->put('test_laravel.csv', "nama,nilai\nEgi,90\n");
+
+//     return 'Berhasil upload ke VPS';
+// });

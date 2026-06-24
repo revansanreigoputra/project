@@ -56,4 +56,20 @@ return [
         'source_name' => 'UPA-TIK',
     ],
 
+    'vps_csv' => [
+        'enabled' => env('VPS_CSV_ENABLED', false),
+        'source_disk' => env('VPS_CSV_SOURCE_DISK', 'vps_dataset'),
+        'target_disk' => env('VPS_CSV_TARGET_DISK', 'vps_csv'),
+        'source_directory' => env('VPS_CSV_SOURCE_DIRECTORY', ''),
+        'target_uploads_directory' => env('VPS_CSV_TARGET_UPLOADS_DIRECTORY', 'scan-uploads'),
+        'target_results_directory' => env('VPS_CSV_TARGET_RESULTS_DIRECTORY', 'scan-results'),
+        'system_user_email' => env('VPS_CSV_SYSTEM_USER_EMAIL', env('UPA_TIK_API_SYSTEM_USER_EMAIL')),
+        'source_name' => env('VPS_CSV_SOURCE_NAME', 'VPS Syslog Dataset'),
+        'max_files' => (int) env('VPS_CSV_MAX_FILES', 10),
+        'delete_after_processing' => env('VPS_CSV_DELETE_AFTER_PROCESSING', false),
+        'schedule' => env('VPS_CSV_SCHEDULE', 'daily'),
+        'schedule_time' => env('VPS_CSV_SCHEDULE_TIME', '00:00'),
+        'schedule_timezone' => env('VPS_CSV_SCHEDULE_TIMEZONE', 'Asia/Jakarta'),
+    ],
+
 ];
