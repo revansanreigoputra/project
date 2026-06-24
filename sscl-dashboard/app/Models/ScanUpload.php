@@ -44,11 +44,6 @@ class ScanUpload extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function scanJobs(): HasMany
-    {
-        return $this->hasMany(DetectionResult::class);
-    }
-
     public function detectionResults(): HasMany
     {
         return $this->hasMany(DetectionResult::class);
