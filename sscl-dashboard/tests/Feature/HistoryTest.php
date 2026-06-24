@@ -94,7 +94,7 @@ class HistoryTest extends TestCase
         $apiUpload = $this->createUpload($user, 'api-source.csv', 'scan-uploads/api/2026/06/api-source.csv');
         $apiUpload->forceFill([
             'source' => 'api',
-            'source_name' => 'UPA-TIK',
+            'source_name' => 'VPS Syslog Dataset',
             'external_reference' => 'upatik-history-filter',
         ])->save();
 
@@ -105,6 +105,7 @@ class HistoryTest extends TestCase
         $response->assertOk();
         $response->assertSee('api-source.csv');
         $response->assertSee('API UPA-TIK');
+        $response->assertDontSee('VPS Syslog Dataset');
         $response->assertDontSee('manual-source.csv');
     }
 

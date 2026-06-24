@@ -33,7 +33,7 @@ class ScanUpload extends Model
     public function sourceLabel(): string
     {
         if ($this->source === 'api') {
-            return $this->source_name ?: 'API UPA-TIK';
+            return 'API UPA-TIK';
         }
 
         return 'Manual';
