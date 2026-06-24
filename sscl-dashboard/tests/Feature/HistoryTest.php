@@ -270,6 +270,9 @@ class HistoryTest extends TestCase
             'email' => 'security-admin@example.test',
         ]);
         $secondAdmin->assignRole(RolePermissionSeeder::ADMIN_ROLE);
+        $this->userWithRole(RolePermissionSeeder::PETUGAS_ROLE, [
+            'email' => 'viewer@example.test',
+        ]);
 
         Http::fake([
             '*' => Http::response([
@@ -326,9 +329,10 @@ class HistoryTest extends TestCase
             $renderedMail = $mail->render();
 
             return $mail->hasTo('user@example.test')
-                && $mail->hasTo('admin@example.com')
-                && $mail->hasTo('security-admin@example.test')
-                && $mail->hasTo('admin@example.test')
+                && $mail->hasTo('viewer@example.test')
+                && ! $mail->hasTo('admin@example.com')
+                && ! $mail->hasTo('security-admin@example.test')
+                && ! $mail->hasTo('admin@example.test')
                 && $mail->detectionResult->id === $detectionResult->id
                 && $mail->summary['normal'] === 2
                 && $mail->summary['malware'] === 1

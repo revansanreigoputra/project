@@ -376,14 +376,11 @@ class TrafficDetectionService
         }
 
         $detectionResult->loadMissing(['scanUpload.user', 'user']);
-        $adminEmails = User::query()
-            ->whereHas('roles', fn ($query) => $query->where('name', 'Admin'))
+        $recipients = User::query()
+            ->whereHas('roles', fn ($query) => $query->where('name', 'Petugas'))
+            ->get()
+            ->filter(fn (User $user) => $this->canReceiveDetectionCompletedEmail($user, $detectionResult))
             ->pluck('email');
-        $recipients = collect()
-            ->merge($adminEmails)
-            ->push($detectionResult->user?->email)
-            ->push($detectionResult->scanUpload?->user?->email)
-            ->push(config('services.scan_notifications.admin_email'));
         $recipients = $recipients
             ->filter(fn ($email) => is_string($email) && filter_var($email, FILTER_VALIDATE_EMAIL))
             ->unique()
@@ -404,5 +401,21 @@ class TrafficDetectionService
                 'error' => $exception->getMessage(),
             ]);
         }
+    }
+
+    private function canReceiveDetectionCompletedEmail(User $user, DetectionResult $detectionResult): bool
+    {
+        if (! $user->hasRole('Petugas') || ! $user->canAny(['detection.view', 'reports.view'])) {
+            return false;
+        }
+
+        if ($user->can('history.view-any')) {
+            return true;
+        }
+
+        $userId = (int) $user->getAuthIdentifier();
+
+        return $userId === (int) $detectionResult->user_id
+            || $userId === (int) $detectionResult->scanUpload?->user_id;
     }
 }
