@@ -28,6 +28,7 @@ class DetectionResultTable
     public static function summary(DetectionResult $detectionResult, ?Collection $rows = null): array
     {
         $baseSummary = $detectionResult->toPredictionArray()['summary'] ?? [];
+        $normalLabel = self::normalLabel($baseSummary);
         $baseLabels = collect($baseSummary['labels'] ?? [])
             ->map(fn ($count) => (int) $count)
             ->filter(fn (int $count) => $count > 0);
@@ -49,15 +50,16 @@ class DetectionResultTable
             ->groupBy(fn (array $row) => (string) ($row['label'] ?? 'Unknown'))
             ->map(fn (Collection $items) => $items->count())
             ->all();
-        $normal = (int) ($labels['Normal'] ?? 0);
+        $normal = (int) ($labels[$normalLabel] ?? 0);
         $unknown = (int) ($labels['Unknown'] ?? 0);
         $malwareLabels = collect($labels)
-            ->reject(fn ($count, string $label) => in_array($label, ['Normal', 'Unknown'], true))
+            ->reject(fn ($count, string $label) => in_array($label, [$normalLabel, 'Unknown'], true))
             ->all();
         $malware = (int) array_sum($malwareLabels);
         $averageConfidence = $rows->avg(fn (array $row) => (float) ($row['confidence'] ?? 0));
 
         return [
+            'normal_label' => $normalLabel,
             'normal' => $normal,
             'malware' => $malware,
             'unknown' => $unknown,
@@ -66,6 +68,9 @@ class DetectionResultTable
             'average_confidence' => $averageConfidence ? round($averageConfidence * 100, 2) : 0,
             'labels' => $labels,
             'malware_labels' => $malwareLabels,
+            'guardrail_applied_count' => $rows
+                ->filter(fn (array $row) => (bool) ($row['blocked_guardrail_applied'] ?? false))
+                ->count(),
         ];
     }
 
@@ -161,6 +166,7 @@ class DetectionResultTable
                 'row' => $record['row_id'] ?? $rows->count() + 1,
                 'label' => $label,
                 'confidence' => self::percentToDecimal($record['confidence_percent'] ?? 0),
+                'blocked_guardrail_applied' => self::truthy($record['blocked_guardrail_applied'] ?? false),
                 'probabilities' => $probabilities,
             ]);
         }
@@ -178,6 +184,7 @@ class DetectionResultTable
             'row' => $row['row'] ?? $row['row_id'] ?? $index + 1,
             'label' => $row['label'] ?? 'Unknown',
             'confidence' => $confidence > 1 ? $confidence / 100 : $confidence,
+            'blocked_guardrail_applied' => (bool) ($row['blocked_guardrail_applied'] ?? false),
             'probabilities' => collect($row['probabilities'] ?? [])
                 ->map(fn ($value) => ((float) $value) > 1 ? ((float) $value) / 100 : (float) $value)
                 ->all(),
@@ -200,6 +207,7 @@ class DetectionResultTable
                     $haystack = Str::lower(implode(' ', [
                         $row['row'] ?? '',
                         $row['label'] ?? '',
+                        ($row['blocked_guardrail_applied'] ?? false) ? 'deny guardrail blocked' : '',
                         number_format(((float) ($row['confidence'] ?? 0)) * 100, 2, ',', '.'),
                         $probabilities,
                     ]));
@@ -252,17 +260,18 @@ class DetectionResultTable
 
     private static function normalizeSummaryArray(array $summary, DetectionResult $detectionResult, int $total): array
     {
+        $normalLabel = self::normalLabel($summary);
         $labels = collect($summary['labels'] ?? [])
             ->map(fn ($count) => (int) $count)
             ->filter(fn (int $count) => $count > 0)
             ->all();
         $malwareLabels = collect($labels)
-            ->reject(fn ($count, string $label) => in_array($label, ['Normal', 'Unknown'], true))
+            ->reject(fn ($count, string $label) => in_array($label, [$normalLabel, 'Unknown'], true))
             ->all();
         $labelsCoverTotal = ($total === 0 && $labels !== []) || ($total > 0 && array_sum($labels) === $total);
         $normal = $labelsCoverTotal
-            ? (int) ($labels['Normal'] ?? 0)
-            : (int) ($summary['normal'] ?? $detectionResult->normal_count ?? $labels['Normal'] ?? 0);
+            ? (int) ($labels[$normalLabel] ?? 0)
+            : (int) ($summary['normal'] ?? $detectionResult->normal_count ?? $labels[$normalLabel] ?? 0);
         $unknown = $labelsCoverTotal
             ? (int) ($labels['Unknown'] ?? 0)
             : (int) ($summary['unknown'] ?? $detectionResult->unknown_count ?? $labels['Unknown'] ?? 0);
@@ -271,6 +280,7 @@ class DetectionResultTable
             : (int) ($summary['malware'] ?? $detectionResult->malware_count ?? array_sum($malwareLabels));
 
         return [
+            'normal_label' => $normalLabel,
             'normal' => $normal,
             'malware' => $malware,
             'unknown' => $unknown,
@@ -279,7 +289,22 @@ class DetectionResultTable
             'average_confidence' => (float) ($summary['average_confidence'] ?? $detectionResult->average_confidence ?? 0),
             'labels' => $labels,
             'malware_labels' => $malwareLabels,
+            'guardrail_applied_count' => (int) ($summary['guardrail_applied_count'] ?? 0),
         ];
+    }
+
+    private static function normalLabel(array $summary): string
+    {
+        return (string) ($summary['normal_label'] ?? 'Normal');
+    }
+
+    private static function truthy($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'y'], true);
     }
 
     private static function labelLookup(DetectionResult $detectionResult): array

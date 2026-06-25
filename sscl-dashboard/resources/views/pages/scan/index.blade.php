@@ -4,9 +4,11 @@
 @section('page')
     @php
         $currentPrediction = $prediction ?? null;
+        $summary = $currentPrediction['summary'] ?? [];
+        $normalLabel = $summary['normal_label'] ?? 'Normal';
         $formatNumber = fn ($value) => number_format((float) $value, 0, ',', '.');
         $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
-        $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+        $toneForLabel = fn ($label) => $label === $normalLabel ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
         $statusForTone = fn ($tone) => $tone === 'accent' ? 'Aman' : ($tone === 'warning' ? 'Unknown' : 'Perlu Review');
         $recommendationForTone = fn ($tone) => $tone === 'accent' ? 'Arsipkan' : ($tone === 'warning' ? 'Validasi manual' : 'Prioritaskan');
         $topProbability = function ($probabilities) {
@@ -25,6 +27,7 @@
             ->values()
             ->map(function (array $result, int $index) use (
                 $formatPercent,
+                $normalLabel,
                 $toneForLabel,
                 $statusForTone,
                 $recommendationForTone,
@@ -34,7 +37,7 @@
                 $tone = $toneForLabel($label);
                 $probabilities = collect($result['probabilities'] ?? []);
                 $confidencePercent = max(0, min(100, ((float) ($result['confidence'] ?? 0)) * 100));
-                $normalProbability = max(0, min(100, ((float) ($probabilities['Normal'] ?? 0)) * 100));
+                $normalProbability = max(0, min(100, ((float) ($probabilities[$normalLabel] ?? 0)) * 100));
                 $labelProbability = max(0, min(100, ((float) ($probabilities[$label] ?? $result['confidence'] ?? 0)) * 100));
                 $topPrediction = $topProbability($probabilities);
                 $topPredictionPercent = max(0, min(100, ((float) $topPrediction['value']) * 100));
@@ -58,6 +61,8 @@
                     'top_label' => $topPrediction['label'],
                     'top_probability' => round($topPredictionPercent, 2),
                     'top_probability_text' => $formatPercent($topPredictionPercent).'%',
+                    'guardrail_applied' => (bool) ($result['blocked_guardrail_applied'] ?? false),
+                    'guardrail_text' => (bool) ($result['blocked_guardrail_applied'] ?? false) ? 'Deny Guardrail' : '-',
                     'probabilities' => $probabilities
                         ->sortDesc()
                         ->take(4)
@@ -79,11 +84,10 @@
                 ];
             })
             ->values();
-        $summary = $currentPrediction['summary'] ?? [];
         $labelOptions = collect($summary['labels'] ?? [])
             ->keys()
             ->whenEmpty(fn ($items) => $previewRows->pluck('label')->unique()->values())
-            ->whenEmpty(fn ($items) => collect(['Normal']));
+            ->whenEmpty(fn ($items) => collect([$normalLabel]));
     @endphp
 
     <div
@@ -198,8 +202,9 @@
         @isset($prediction)
             @php
                 $summary = $prediction['summary'] ?? [];
-                $labelOptions = collect($summary['labels'] ?? [])->keys()->whenEmpty(fn ($items) => collect(['Normal']));
-                $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+                $normalLabel = $summary['normal_label'] ?? 'Normal';
+                $labelOptions = collect($summary['labels'] ?? [])->keys()->whenEmpty(fn ($items) => collect([$normalLabel]));
+                $toneForLabel = fn ($label) => $label === $normalLabel ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
             @endphp
 
             <div class="mt-6 rounded-3xl bg-surface2 border border-app p-5">
@@ -213,7 +218,7 @@
 
                 <div class="mt-5 grid gap-4 md:grid-cols-4">
                     <div class="rounded-2xl bg-surface border border-app p-4">
-                        <div class="text-xs text-muted">Normal</div>
+                        <div class="text-xs text-muted">{{ $normalLabel }}</div>
                         <div class="mt-1 text-2xl font-semibold">{{ number_format($summary['normal'] ?? 0, 0, ',', '.') }}</div>
                         <div class="text-xs text-muted">{{ number_format($summary['normal_percent'] ?? 0, 2, ',', '.') }}%</div>
                     </div>
@@ -313,7 +318,7 @@
                                         <x-lucide-arrow-up-down class="h-3.5 w-3.5" />
                                     </button>
                                 </th>
-                                <th class="px-3 py-2.5 text-left font-medium">Prob. Normal</th>
+                                <th class="px-3 py-2.5 text-left font-medium">Prob. {{ $normalLabel }}</th>
                                 <th class="px-3 py-2.5 text-left font-medium">Prob. Prediksi</th>
                                 <th class="px-3 py-2.5 text-left font-medium">Status</th>
                                 <th class="px-3 py-2.5 text-right font-medium">Aksi</th>
@@ -370,6 +375,7 @@
                                             x-text="row.status"
                                         ></span>
                                         <div class="mt-1 text-xs text-muted" x-text="row.recommendation"></div>
+                                        <div class="mt-1 text-xs text-[color:var(--warning)]" x-show="row.guardrail_applied" x-text="row.guardrail_text"></div>
                                     </td>
                                     <td class="px-3 py-2.5 text-right">
                                         <button
@@ -460,7 +466,7 @@
                             <div class="mt-1 text-lg font-semibold sm:text-xl" x-text="rowDetail.confidence_text"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
-                            <div class="text-xs text-muted">Prob. Normal</div>
+                            <div class="text-xs text-muted">Prob. {{ $normalLabel }}</div>
                             <div class="mt-1 text-lg font-semibold sm:text-xl" x-text="rowDetail.prob_normal_text"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
@@ -482,6 +488,10 @@
                         <div class="mt-3 flex items-center justify-between gap-4">
                             <span class="text-muted">Rekomendasi</span>
                             <span class="font-semibold" x-text="rowDetail.recommendation"></span>
+                        </div>
+                        <div class="mt-3 flex items-center justify-between gap-4">
+                            <span class="text-muted">Catatan</span>
+                            <span class="font-semibold" x-text="rowDetail.guardrail_text || '-'"></span>
                         </div>
                     </div>
 

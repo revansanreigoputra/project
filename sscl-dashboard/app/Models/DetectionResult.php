@@ -114,6 +114,7 @@ class DetectionResult extends Model
     {
         $summary = $this->summary ?: [];
         $labels = $summary['labels'] ?? [];
+        $normalLabel = (string) ($summary['normal_label'] ?? 'Normal');
 
         if ($labels === [] && is_array($this->results)) {
             foreach ($this->results as $result) {
@@ -128,17 +129,17 @@ class DetectionResult extends Model
             $unknownFallback = $summary['unknown'] ?? $this->unknown_count ?? 0;
 
             $labels = array_filter([
-                'Normal' => (int) $normalFallback,
+                $normalLabel => (int) $normalFallback,
                 'Malware' => (int) $malwareFallback,
                 'Unknown' => (int) $unknownFallback,
             ], fn (int $count) => $count > 0);
         }
 
-        $normal = (int) ($summary['normal'] ?? $labels['Normal'] ?? $this->normal_count ?? 0);
+        $normal = (int) ($summary['normal'] ?? $labels[$normalLabel] ?? $this->normal_count ?? 0);
         $unknown = (int) ($summary['unknown'] ?? $labels['Unknown'] ?? $this->unknown_count ?? 0);
         $total = (int) ($this->total ?: array_sum($labels));
         $malwareLabels = collect($labels)
-            ->reject(fn ($count, string $label) => in_array($label, ['Normal', 'Unknown'], true))
+            ->reject(fn ($count, string $label) => in_array($label, [$normalLabel, 'Unknown'], true))
             ->all();
         $malwareFallback = (int) ($this->malware_count ?? 0);
         $malware = array_key_exists('malware', $summary)
@@ -146,6 +147,7 @@ class DetectionResult extends Model
             : (int) (array_sum($malwareLabels) ?: $malwareFallback);
 
         return [
+            'normal_label' => $normalLabel,
             'normal' => $normal,
             'malware' => $malware,
             'unknown' => $unknown,
@@ -154,6 +156,10 @@ class DetectionResult extends Model
             'average_confidence' => (float) ($summary['average_confidence'] ?? $this->average_confidence ?? 0),
             'labels' => $labels,
             'malware_labels' => $malwareLabels,
+            'guardrail_applied_count' => (int) ($summary['guardrail_applied_count'] ?? 0),
+            'class_names' => $summary['class_names'] ?? [],
+            'feature_columns' => $summary['feature_columns'] ?? [],
+            'standardized_columns' => $summary['standardized_columns'] ?? [],
         ];
     }
 

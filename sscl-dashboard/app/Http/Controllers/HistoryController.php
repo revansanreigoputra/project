@@ -318,17 +318,19 @@ class HistoryController extends Controller
         }
 
         $results = collect($detectionResult->results ?? []);
+        $normalLabel = (string) (($detectionResult->summary ?? [])['normal_label'] ?? 'Normal');
 
-        return response()->streamDownload(function () use ($results) {
+        return response()->streamDownload(function () use ($results, $normalLabel) {
             $handle = fopen('php://output', 'w');
 
             fwrite($handle, "\xEF\xBB\xBF");
-            $probabilityLabels = $this->probabilityLabels($results);
+            $probabilityLabels = $this->probabilityLabels($results, $normalLabel);
 
             fputcsv($handle, [
                 'row_id',
                 'label',
                 'confidence_percent',
+                'blocked_guardrail_applied',
                 ...array_map(fn (string $label) => 'prob_'.Str::slug($label, '_').'_percent', $probabilityLabels),
             ]);
 
@@ -337,6 +339,7 @@ class HistoryController extends Controller
                     $result['row'] ?? $index,
                     $result['label'] ?? 'Unknown',
                     $this->csvPercent($result['confidence'] ?? 0),
+                    (bool) ($result['blocked_guardrail_applied'] ?? false) ? '1' : '0',
                     ...array_map(
                         fn (string $label) => $this->csvPercent(($result['probabilities'] ?? [])[$label] ?? 0),
                         $probabilityLabels
@@ -363,12 +366,12 @@ class HistoryController extends Controller
         return number_format(((float) $value) * 100, 2, '.', '');
     }
 
-    private function probabilityLabels(Collection $results): array
+    private function probabilityLabels(Collection $results, string $normalLabel = 'Normal'): array
     {
         return $results
             ->flatMap(fn (array $result) => array_keys($result['probabilities'] ?? []))
             ->unique()
-            ->sortBy(fn (string $label) => $label === 'Normal' ? '0' : '1'.$label)
+            ->sortBy(fn (string $label) => $label === $normalLabel ? '0' : '1'.$label)
             ->values()
             ->all();
     }

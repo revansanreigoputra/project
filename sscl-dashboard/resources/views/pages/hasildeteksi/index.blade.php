@@ -34,10 +34,12 @@
             'per_page' => 10,
         ], $tableFilters ?? []);
         $perPageOptions = $perPageOptions ?? [10, 25, 50, 100];
-        $labelOptions = collect($labelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect(['Normal']));
+        $normalLabel = $summary['normal_label'] ?? 'Normal';
+        $guardrailAppliedCount = (int) ($summary['guardrail_applied_count'] ?? 0);
+        $labelOptions = collect($labelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect([$normalLabel]));
         $formatNumber = fn ($value) => number_format((float) $value, 0, ',', '.');
         $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
-        $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+        $toneForLabel = fn ($label) => $label === $normalLabel ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
         $sortOptions = [
             'row' => 'Row ID',
             'label' => 'Label',
@@ -71,14 +73,14 @@
             ->map(fn ($count) => (int) $count)
             ->filter(fn ($count) => $count > 0)
             ->whenEmpty(fn () => collect([
-                'Normal' => (int) ($summary['normal'] ?? 0),
+                $normalLabel => (int) ($summary['normal'] ?? 0),
                 'Malware' => (int) ($summary['malware'] ?? 0),
                 'Unknown' => (int) ($summary['unknown'] ?? 0),
             ])->filter(fn ($count) => $count > 0));
         $maxLabelCount = max((int) $labelCounts->max(), 1);
         $latestCards = [
             ['label' => 'Total Data Terakhir', 'value' => $formatNumber($latestTotal), 'meta' => $latestFile, 'icon' => 'lucide-database', 'tone' => 'primary'],
-            ['label' => 'Normal Terakhir', 'value' => $formatNumber($summary['normal']), 'meta' => $formatPercent($summary['normal_percent']).'% dari hasil terakhir', 'icon' => 'lucide-shield-check', 'tone' => 'accent'],
+            ['label' => $normalLabel.' Terakhir', 'value' => $formatNumber($summary['normal']), 'meta' => $formatPercent($summary['normal_percent']).'% dari hasil terakhir', 'icon' => 'lucide-shield-check', 'tone' => 'accent'],
             ['label' => 'Malware Terakhir', 'value' => $formatNumber($summary['malware']), 'meta' => $formatPercent($summary['malware_percent']).'% perlu review', 'icon' => 'lucide-bug', 'tone' => 'danger'],
             ['label' => 'Confidence Terakhir', 'value' => $formatPercent($summary['average_confidence']).'%', 'meta' => 'Rata-rata keyakinan model', 'icon' => 'lucide-gauge', 'tone' => 'info'],
         ];
@@ -306,7 +308,7 @@
                             </div>
                             <div class="mt-3 grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-3">
                                 <span>Total <span class="font-semibold text-app" x-text="Number(item.total).toLocaleString('id-ID')"></span></span>
-                                <span>Normal <span class="font-semibold text-app" x-text="Number(item.normal).toLocaleString('id-ID')"></span></span>
+                                <span>{{ $normalLabel }} <span class="font-semibold text-app" x-text="Number(item.normal).toLocaleString('id-ID')"></span></span>
                                 <span>Malware <span class="font-semibold text-app" x-text="Number(item.malware).toLocaleString('id-ID')"></span></span>
                             </div>
                         </button>
@@ -440,8 +442,9 @@
                             <th class="px-4 py-3 text-left font-medium">Row ID</th>
                             <th class="px-4 py-3 text-left font-medium">Label</th>
                             <th class="px-4 py-3 text-left font-medium">Confidence</th>
-                            <th class="px-4 py-3 text-left font-medium">Prob. Normal</th>
+                            <th class="px-4 py-3 text-left font-medium">Prob. {{ $normalLabel }}</th>
                             <th class="px-4 py-3 text-left font-medium">Prob. Prediksi</th>
+                            <th class="px-4 py-3 text-left font-medium">Catatan</th>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
                             <th class="px-4 py-3 text-right font-medium">Aksi</th>
                         </tr>
@@ -453,11 +456,12 @@
                                 $tone = $toneForLabel($label);
                                 $probabilities = collect($result['probabilities'] ?? []);
                                 $confidencePercent = max(0, min(100, ((float) ($result['confidence'] ?? 0)) * 100));
-                                $normalProbability = max(0, min(100, ((float) ($probabilities['Normal'] ?? 0)) * 100));
+                                $normalProbability = max(0, min(100, ((float) ($probabilities[$normalLabel] ?? 0)) * 100));
                                 $labelProbability = max(0, min(100, ((float) ($probabilities[$label] ?? $result['confidence'] ?? 0)) * 100));
                                 $topPrediction = $topProbability($probabilities);
                                 $topPredictionPercent = max(0, min(100, ((float) $topPrediction['value']) * 100));
                                 $rowNumber = $resultsPaginator ? (($resultsPaginator->firstItem() ?? 1) + $loop->index) : $loop->iteration;
+                                $guardrailApplied = (bool) ($result['blocked_guardrail_applied'] ?? false);
                                 $rowPayload = [
                                     'no' => $rowNumber,
                                     'row' => (string) ($result['row'] ?? $loop->index),
@@ -469,6 +473,8 @@
                                     'probLabel' => $formatPercent($labelProbability).'%',
                                     'topLabel' => $topPrediction['label'],
                                     'topProbability' => $formatPercent($topPredictionPercent).'%',
+                                    'guardrailApplied' => $guardrailApplied,
+                                    'guardrailText' => $guardrailApplied ? 'Deny Guardrail' : '-',
                                     'probabilities' => $probabilities
                                         ->sortDesc()
                                         ->take(4)
@@ -519,6 +525,13 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3">
+                                    @if ($guardrailApplied)
+                                        <span class="rounded-full bg-[rgba(251,191,36,0.18)] px-3 py-1 text-xs font-semibold text-[color:var(--warning)]">Deny Guardrail</span>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3">
                                     <span
                                         @class([
                                             'rounded-full px-3 py-1 text-xs font-semibold',
@@ -544,7 +557,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td class="px-6 py-10 text-center text-muted" colspan="8">
+                                <td class="px-6 py-10 text-center text-muted" colspan="9">
                                     <x-lucide-file-text class="mx-auto h-10 w-10" />
                                     <div class="mt-3 text-sm font-semibold text-app">Belum ada hasil deteksi</div>
                                     <div class="mt-1 text-xs">Upload data untuk mulai menjalankan deteksi malware.</div>
@@ -647,7 +660,7 @@
                             <div class="mt-1 text-lg font-semibold sm:text-xl" x-text="rowDetail.confidence"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
-                            <div class="text-xs text-muted">Prob. Normal</div>
+                            <div class="text-xs text-muted">Prob. {{ $normalLabel }}</div>
                             <div class="mt-1 text-lg font-semibold sm:text-xl" x-text="rowDetail.probNormal"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
@@ -662,6 +675,10 @@
                     </div>
 
                     <div class="rounded-2xl border border-app bg-surface2 p-4 text-sm">
+                        <div class="flex items-center justify-between gap-4">
+                            <span class="text-muted">Catatan</span>
+                            <span class="font-semibold" x-text="rowDetail.guardrailText || '-'"></span>
+                        </div>
                         <div class="flex items-center justify-between gap-4">
                             <span class="text-muted">Status</span>
                             <span class="font-semibold" x-text="rowDetail.status"></span>
@@ -722,7 +739,7 @@
                             <div class="mt-1 text-xl font-semibold" x-text="detectionDetail.total"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
-                            <div class="text-xs text-muted">Normal</div>
+                            <div class="text-xs text-muted">{{ $normalLabel }}</div>
                             <div class="mt-1 text-xl font-semibold" x-text="detectionDetail.normal"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">

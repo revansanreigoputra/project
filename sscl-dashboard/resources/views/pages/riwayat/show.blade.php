@@ -20,8 +20,10 @@
         $formatPercent = fn ($value) => number_format((float) $value, 2, ',', '.');
         $status = $historyItem['status'] ?? '-';
         $sourceLabel = $historyItem['source_label'] ?? $scanUpload->sourceLabel();
-        $labelOptions = collect($afterLabelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect(['Normal']));
-        $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+        $normalLabel = $summary['normal_label'] ?? 'Normal';
+        $guardrailAppliedCount = (int) ($summary['guardrail_applied_count'] ?? 0);
+        $labelOptions = collect($afterLabelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect([$normalLabel]));
+        $toneForLabel = fn ($label) => $label === $normalLabel ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
         $canManageOperational = auth()->user()?->can('operational.manage');
     @endphp
 
@@ -107,7 +109,7 @@
                     <div class="mt-1 text-2xl font-semibold">{{ $formatNumber($historyItem['total'] ?? 0) }}</div>
                 </div>
                 <div class="rounded-2xl bg-surface2 border border-app p-4">
-                    <div class="text-xs text-muted">Normal</div>
+                    <div class="text-xs text-muted">{{ $normalLabel }}</div>
                     <div class="mt-1 text-2xl font-semibold">{{ $formatNumber($historyItem['normal'] ?? 0) }}</div>
                 </div>
                 <div class="rounded-2xl bg-surface2 border border-app p-4">
@@ -296,7 +298,7 @@
                 @if ($prediction)
                     <div class="mt-5 grid gap-4 md:grid-cols-4">
                         <div class="rounded-2xl bg-surface2 border border-app p-4">
-                            <div class="text-xs text-muted">Normal</div>
+                            <div class="text-xs text-muted">{{ $normalLabel }}</div>
                             <div class="mt-1 text-2xl font-semibold">{{ $formatNumber($summary['normal'] ?? 0) }}</div>
                             <div class="text-xs text-muted">{{ $formatPercent($summary['normal_percent'] ?? 0) }}%</div>
                         </div>
@@ -312,17 +314,21 @@
                         <div class="rounded-2xl bg-surface2 border border-app p-4">
                             <div class="text-xs text-muted">Avg. Confidence</div>
                             <div class="mt-1 text-2xl font-semibold">{{ $formatPercent($summary['average_confidence'] ?? 0) }}%</div>
+                            @if ($guardrailAppliedCount > 0)
+                                <div class="text-xs text-[color:var(--warning)]">{{ $formatNumber($guardrailAppliedCount) }} Deny dikoreksi</div>
+                            @endif
                         </div>
                     </div>
 
                     <div class="mt-5 max-h-[460px] overflow-auto rounded-2xl border border-app">
-                        <table class="w-full min-w-[760px] text-sm">
+                        <table class="w-full min-w-[860px] text-sm">
                             <thead class="sticky top-0 z-10 bg-surface2 text-muted">
                                 <tr class="border-b border-app">
                                     <th class="px-3 py-2.5 text-left font-medium">Row ID</th>
                                     <th class="px-3 py-2.5 text-left font-medium">Confidence</th>
-                                    <th class="px-3 py-2.5 text-left font-medium">Prob. Normal</th>
+                                    <th class="px-3 py-2.5 text-left font-medium">Prob. {{ $normalLabel }}</th>
                                     <th class="px-3 py-2.5 text-left font-medium">Prob. Label</th>
+                                    <th class="px-3 py-2.5 text-left font-medium">Catatan</th>
                                     <th class="px-3 py-2.5 text-left font-medium">Label</th>
                                 </tr>
                             </thead>
@@ -332,14 +338,22 @@
                                         $label = $result['label'] ?? 'Unknown';
                                         $tone = $toneForLabel($label);
                                         $probabilities = $result['probabilities'] ?? [];
+                                        $guardrailApplied = (bool) ($result['blocked_guardrail_applied'] ?? false);
                                     @endphp
                                     <tr
                                         class="hover:bg-surface2/50"
                                     >
                                         <td class="px-3 py-2.5">{{ $result['row'] ?? $loop->index }}</td>
                                         <td class="px-3 py-2.5 font-semibold">{{ $formatPercent(((float) ($result['confidence'] ?? 0)) * 100) }}%</td>
-                                        <td class="px-3 py-2.5 text-muted">{{ $formatPercent(((float) ($probabilities['Normal'] ?? 0)) * 100) }}%</td>
+                                        <td class="px-3 py-2.5 text-muted">{{ $formatPercent(((float) ($probabilities[$normalLabel] ?? 0)) * 100) }}%</td>
                                         <td class="px-3 py-2.5 text-muted">{{ $formatPercent(((float) ($probabilities[$label] ?? $result['confidence'] ?? 0)) * 100) }}%</td>
+                                        <td class="px-3 py-2.5">
+                                            @if ($guardrailApplied)
+                                                <span class="rounded-full bg-[rgba(251,191,36,0.18)] px-3 py-1 text-xs font-semibold text-[color:var(--warning)]">Terdeteksi Deny</span>
+                                            @else
+                                                <span class="text-muted">-</span>
+                                            @endif
+                                        </td>
                                         <td class="px-3 py-2.5">
                                             <span
                                                 @class([
@@ -355,7 +369,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td class="px-4 py-4 text-muted" colspan="5">Hasil deteksi belum memiliki detail baris.</td>
+                                        <td class="px-4 py-4 text-muted" colspan="6">Hasil deteksi belum memiliki detail baris.</td>
                                     </tr>
                                 @endforelse
                             </tbody>

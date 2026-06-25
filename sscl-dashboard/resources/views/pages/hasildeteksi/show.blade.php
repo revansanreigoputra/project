@@ -32,7 +32,9 @@
 
             return number_format($bytes, 0, ',', '.') . ' B';
         };
-        $toneForLabel = fn ($label) => $label === 'Normal' ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
+        $normalLabel = $summary['normal_label'] ?? 'Normal';
+        $guardrailAppliedCount = (int) ($summary['guardrail_applied_count'] ?? 0);
+        $toneForLabel = fn ($label) => $label === $normalLabel ? 'accent' : ($label === 'Unknown' ? 'warning' : 'danger');
         $sortOptions = [
             'row' => 'Row ID',
             'label' => 'Label',
@@ -69,12 +71,12 @@
         $processedAt = $formatDateTime($detectionResult->processed_at ?? $detectionResult->created_at);
         $uploadedAt = $formatDateTime($detectionResult->scanUpload?->created_at);
         $sourceLabel = $detectionResult->scanUpload?->sourceLabel() ?? 'Manual';
-        $labelOptions = collect($labelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect(['Normal']));
+        $labelOptions = collect($labelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect([$normalLabel]));
         $labelCounts = collect($summary['labels'] ?? [])
             ->map(fn ($count) => (int) $count)
             ->filter(fn ($count) => $count > 0)
             ->whenEmpty(fn () => collect([
-                'Normal' => $normal,
+                $normalLabel => $normal,
                 'Malware' => $malware,
                 'Unknown' => $unknown,
             ])->filter(fn ($count) => $count > 0));
@@ -220,7 +222,7 @@
 
             <div class="rounded-3xl border border-app bg-surface p-5 shadow-soft">
                 <div class="flex items-center justify-between gap-3">
-                    <div class="text-xs font-semibold text-muted">Normal</div>
+                    <div class="text-xs font-semibold text-muted">{{ $normalLabel }}</div>
                     <x-lucide-shield-check class="h-5 w-5 text-[color:var(--accent)]" />
                 </div>
                 <div class="mt-4 text-3xl font-semibold">{{ $formatNumber($normal) }}</div>
@@ -278,7 +280,7 @@
                     <div class="grid gap-3 p-4 text-xs text-muted md:grid-cols-3">
                         <div class="flex items-center gap-2">
                             <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--accent)]"></span>
-                            Normal {{ $formatPercent($normalPercent) }}%
+                            {{ $normalLabel }} {{ $formatPercent($normalPercent) }}%
                         </div>
                         <div class="flex items-center gap-2">
                             <span class="h-2.5 w-2.5 rounded-full bg-[color:var(--danger)]"></span>
@@ -500,8 +502,9 @@
                             <th class="px-4 py-3 text-left font-medium">Row ID</th>
                             <th class="px-4 py-3 text-left font-medium">Label</th>
                             <th class="px-4 py-3 text-left font-medium">Confidence</th>
-                            <th class="px-4 py-3 text-left font-medium">Prob. Normal</th>
+                            <th class="px-4 py-3 text-left font-medium">Prob. {{ $normalLabel }}</th>
                             <th class="px-4 py-3 text-left font-medium">Prob. Prediksi</th>
+                            <th class="px-4 py-3 text-left font-medium">Catatan</th>
                             <th class="px-4 py-3 text-left font-medium">Status</th>
                             <th class="px-4 py-3 text-right font-medium">Aksi</th>
                         </tr>
@@ -513,11 +516,12 @@
                                 $tone = $toneForLabel($label);
                                 $probabilities = $result['probabilities'] ?? [];
                                 $confidencePercent = max(0, min(100, ((float) ($result['confidence'] ?? 0)) * 100));
-                                $normalProbability = max(0, min(100, ((float) ($probabilities['Normal'] ?? 0)) * 100));
+                                $normalProbability = max(0, min(100, ((float) ($probabilities[$normalLabel] ?? 0)) * 100));
                                 $labelProbability = max(0, min(100, ((float) ($probabilities[$label] ?? $result['confidence'] ?? 0)) * 100));
                                 $topPrediction = $topProbability($probabilities);
                                 $topPredictionPercent = max(0, min(100, ((float) $topPrediction['value']) * 100));
                                 $rowNumber = $resultsPaginator ? (($resultsPaginator->firstItem() ?? 1) + $loop->index) : $loop->iteration;
+                                $guardrailApplied = (bool) ($result['blocked_guardrail_applied'] ?? false);
                                 $rowPayload = [
                                     'no' => $rowNumber,
                                     'row' => (string) ($result['row'] ?? $loop->index),
@@ -529,6 +533,8 @@
                                     'probLabel' => $formatPercent($labelProbability).'%',
                                     'topLabel' => $topPrediction['label'],
                                     'topProbability' => $formatPercent($topPredictionPercent).'%',
+                                    'guardrailApplied' => $guardrailApplied,
+                                    'guardrailText' => $guardrailApplied ? 'Deny Guardrail' : '-',
                                     'probabilities' => collect($probabilities)
                                         ->sortDesc()
                                         ->take(4)
@@ -579,6 +585,13 @@
                                     </div>
                                 </td>
                                 <td class="px-4 py-3">
+                                    @if ($guardrailApplied)
+                                        <span class="rounded-full bg-[rgba(251,191,36,0.18)] px-3 py-1 text-xs font-semibold text-[color:var(--warning)]">Deny Guardrail</span>
+                                    @else
+                                        <span class="text-muted">-</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3">
                                     <span
                                         @class([
                                             'rounded-full px-3 py-1 text-xs font-semibold',
@@ -604,7 +617,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td class="px-6 py-10 text-center text-muted" colspan="8">
+                                <td class="px-6 py-10 text-center text-muted" colspan="9">
                                     <x-lucide-file-text class="mx-auto h-10 w-10" />
                                     <div class="mt-3 text-sm font-semibold text-app">Detail baris belum tersedia</div>
                                     <div class="mt-1 text-xs">Hasil deteksi ini belum memiliki data baris yang bisa ditampilkan.</div>
@@ -708,7 +721,7 @@
                             <div class="mt-1 text-lg font-semibold sm:text-xl" x-text="rowDetail.confidence"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
-                            <div class="text-xs text-muted">Prob. Normal</div>
+                            <div class="text-xs text-muted">Prob. {{ $normalLabel }}</div>
                             <div class="mt-1 text-lg font-semibold sm:text-xl" x-text="rowDetail.probNormal"></div>
                         </div>
                         <div class="rounded-2xl border border-app bg-surface2 p-4">
@@ -723,6 +736,10 @@
                     </div>
 
                     <div class="rounded-2xl border border-app bg-surface2 p-4 text-sm">
+                        <div class="flex items-center justify-between gap-4">
+                            <span class="text-muted">Catatan</span>
+                            <span class="font-semibold" x-text="rowDetail.guardrailText || '-'"></span>
+                        </div>
                         <div class="flex items-center justify-between gap-4">
                             <span class="text-muted">Status</span>
                             <span class="font-semibold" x-text="rowDetail.status"></span>

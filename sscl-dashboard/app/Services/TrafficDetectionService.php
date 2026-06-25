@@ -183,7 +183,7 @@ class TrafficDetectionService
         $summary = $this->summarizePrediction($results, $total, $payload);
 
         try {
-            $resultsPath = $this->storePredictionResults($detectionResult, $upload, $results);
+            $resultsPath = $this->storePredictionResults($detectionResult, $upload, $results, $summary);
         } catch (Throwable) {
             $this->failDetection(
                 $detectionResult,
@@ -252,6 +252,7 @@ class TrafficDetectionService
 
     private function summarizePrediction(Collection $results, int $total, array $payload = []): array
     {
+        $normalLabel = (string) ($payload['normal_label'] ?? 'Normal');
         $resultLabels = $results
             ->groupBy(fn (array $result) => $result['label'] ?? 'Unknown')
             ->map(fn (Collection $items) => $items->count())
@@ -265,18 +266,22 @@ class TrafficDetectionService
             : $resultLabels;
 
         $averageConfidence = $results->avg(fn (array $result) => (float) ($result['confidence'] ?? 0));
-        $normal = (int) ($payload['total_normal'] ?? $labels['Normal'] ?? 0);
+        $normal = (int) ($payload['total_normal'] ?? $labels[$normalLabel] ?? 0);
         $unknown = (int) ($labels['Unknown'] ?? 0);
         $malwareLabels = collect($labels)
-            ->reject(fn ($count, string $label) => in_array($label, ['Normal', 'Unknown'], true))
+            ->reject(fn ($count, string $label) => in_array($label, [$normalLabel, 'Unknown'], true))
             ->all();
         $malwareFromLabels = (int) array_sum($malwareLabels);
         $payloadMalware = array_key_exists('total_malware', $payload) ? (int) $payload['total_malware'] : null;
         $malware = $payloadMalware !== null && ($normal + $malwareFromLabels + $unknown) !== $total
             ? $payloadMalware
             : $malwareFromLabels;
+        $guardrailAppliedCount = (int) ($payload['guardrail_applied_count'] ?? $results
+            ->filter(fn (array $result) => (bool) ($result['blocked_guardrail_applied'] ?? false))
+            ->count());
 
         return [
+            'normal_label' => $normalLabel,
             'normal' => $normal,
             'malware' => $malware,
             'unknown' => $unknown,
@@ -285,21 +290,26 @@ class TrafficDetectionService
             'average_confidence' => $averageConfidence ? round($averageConfidence * 100, 2) : 0,
             'labels' => $labels,
             'malware_labels' => $malwareLabels,
+            'guardrail_applied_count' => $guardrailAppliedCount,
+            'class_names' => $payload['class_names'] ?? [],
+            'feature_columns' => $payload['feature_columns'] ?? [],
+            'standardized_columns' => $payload['standardized_columns'] ?? [],
         ];
     }
 
-    private function storePredictionResults(DetectionResult $detectionResult, ScanUpload $upload, Collection $results): string
+    private function storePredictionResults(DetectionResult $detectionResult, ScanUpload $upload, Collection $results, array $summary = []): string
     {
         $path = 'scan-results/'.$detectionResult->id.'-'.$this->downloadFileName($upload, 'hasil-deteksi', 'csv');
         $stream = fopen('php://temp', 'r+');
 
         fwrite($stream, "\xEF\xBB\xBF");
-        $probabilityLabels = $this->probabilityLabels($results);
+        $probabilityLabels = $this->probabilityLabels($results, (string) ($summary['normal_label'] ?? 'Normal'));
 
         fputcsv($stream, [
             'row_id',
             'label',
             'confidence_percent',
+            'blocked_guardrail_applied',
             ...array_map(fn (string $label) => 'prob_'.Str::slug($label, '_').'_percent', $probabilityLabels),
         ]);
 
@@ -308,6 +318,7 @@ class TrafficDetectionService
                 $result['row'] ?? $index,
                 $result['label'] ?? 'Unknown',
                 $this->csvPercent($result['confidence'] ?? 0),
+                (bool) ($result['blocked_guardrail_applied'] ?? false) ? '1' : '0',
                 ...array_map(
                     fn (string $label) => $this->csvPercent(($result['probabilities'] ?? [])[$label] ?? 0),
                     $probabilityLabels
@@ -341,7 +352,7 @@ class TrafficDetectionService
         return number_format(((float) $value) * 100, 2, '.', '');
     }
 
-    private function probabilityLabels(Collection $results): array
+    private function probabilityLabels(Collection $results, string $normalLabel = 'Normal'): array
     {
         $labels = $results
             ->flatMap(fn (array $result) => array_keys($result['probabilities'] ?? []))
@@ -349,7 +360,7 @@ class TrafficDetectionService
             ->values();
 
         return $labels
-            ->sortBy(fn (string $label) => $label === 'Normal' ? '0' : '1'.$label)
+            ->sortBy(fn (string $label) => $label === $normalLabel ? '0' : '1'.$label)
             ->values()
             ->all();
     }
