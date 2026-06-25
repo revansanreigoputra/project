@@ -7,6 +7,7 @@ use Illuminate\Support\Str;
 
 class UpaTikTrafficMapper
 {
+    // Kolom minimum yang dibutuhkan model ML setelah data API dinormalisasi.
     public const REQUIRED_COLUMNS = [
         'source_ip',
         'dest_ip',
@@ -21,6 +22,7 @@ class UpaTikTrafficMapper
         'count',
     ];
 
+    // Alias nama kolom dari API supaya format berbeda tetap bisa dipetakan.
     private const COLUMN_ALIASES = [
         'source_ip' => ['source_ip', 'src_ip', 'ip_source', 'ip_sumber', 'alamat_sumber'],
         'dest_ip' => ['dest_ip', 'dst_ip', 'destination_ip', 'ip_destination', 'ip_tujuan', 'alamat_tujuan'],
@@ -35,6 +37,7 @@ class UpaTikTrafficMapper
         'count' => ['count', 'jumlah', 'total', 'hit_count', 'event_count', 'frequency'],
     ];
 
+    // Mapping response JSON UPA-TIK menjadi daftar dataset siap simpan.
     public function mapJsonResponse(array $payload): array
     {
         $datasets = $this->extractDatasets($payload);
@@ -45,6 +48,7 @@ class UpaTikTrafficMapper
             ->all();
     }
 
+    // Ambil kumpulan dataset dari beberapa kemungkinan struktur response API.
     private function extractDatasets(array $payload): array
     {
         // TODO: Sesuaikan bagian ini setelah dokumentasi response API UPA-TIK tersedia.
@@ -79,6 +83,7 @@ class UpaTikTrafficMapper
         throw new InvalidArgumentException('Response API UPA-TIK belum bisa dimapping. Sesuaikan UpaTikTrafficMapper setelah format resmi tersedia.');
     }
 
+    // Validasi satu dataset lalu siapkan metadata dan baris normalisasinya.
     private function mapDataset(array $dataset, int $index): array
     {
         // TODO: Sesuaikan key external reference, nama file, dan daftar record sesuai dokumentasi resmi API UPA-TIK.
@@ -114,6 +119,7 @@ class UpaTikTrafficMapper
         ];
     }
 
+    // Normalisasi semua record mentah dari dataset API.
     private function normalizeRows(array $records): array
     {
         return collect($records)
@@ -122,6 +128,7 @@ class UpaTikTrafficMapper
             ->all();
     }
 
+    // Cocokkan satu record API ke kolom wajib model.
     private function normalizeRecord(array $record, int $index): array
     {
         $lookup = $this->normalizedLookup($record);
@@ -149,6 +156,7 @@ class UpaTikTrafficMapper
         return $normalized;
     }
 
+    // Buat lookup key yang sudah dinormalisasi tanpa mengubah nama asli kolom.
     private function normalizedLookup(array $record): array
     {
         $lookup = [];
@@ -160,6 +168,7 @@ class UpaTikTrafficMapper
         return $lookup;
     }
 
+    // Cari nama kolom sumber berdasarkan daftar alias untuk kolom wajib.
     private function findSourceKey(array $lookup, string $column): string|int|null
     {
         foreach (self::COLUMN_ALIASES[$column] ?? [$column] as $alias) {
@@ -173,21 +182,25 @@ class UpaTikTrafficMapper
         return null;
     }
 
+    // Normalisasi nama key supaya perbedaan spasi, dash, atau kapital tetap terbaca.
     private function normalizeKey(string $key): string
     {
         return preg_replace('/[^a-z0-9]+/', '_', strtolower(trim($key))) ?: $key;
     }
 
+    // Anggap nilai kosong sebagai data hilang saat validasi record.
     private function isMissingValue($value): bool
     {
         return $value === null || (is_string($value) && trim($value) === '');
     }
 
+    // Pastikan data berupa list record, bukan objek tunggal atau array kosong.
     private function isListOfRecords(array $value): bool
     {
         return array_is_list($value) && $value !== [] && collect($value)->every(fn ($row) => is_array($row));
     }
 
+    // Tentukan nama file CSV dari payload, atau buat fallback dari external reference.
     private function fileName($value, string $externalReference, int $index): string
     {
         $fileName = is_string($value) && trim($value) !== ''

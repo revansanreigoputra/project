@@ -6,6 +6,7 @@ use App\Models\User;
 
 class AccessRedirect
 {
+    // Tentukan route tujuan pertama setelah login berdasarkan role dan permission user.
     public static function routeFor(User $user): string
     {
         if ($user->hasRole('Admin')) {

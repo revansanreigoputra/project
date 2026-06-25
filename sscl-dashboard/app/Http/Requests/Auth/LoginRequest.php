@@ -11,16 +11,14 @@ use Illuminate\Validation\ValidationException;
 
 class LoginRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
+    // Semua guest boleh mengirim request login.
     public function authorize(): bool
     {
         return true;
     }
 
     /**
-     * Get the validation rules that apply to the request.
+     * Aturan validasi dasar untuk email dan password login.
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
@@ -33,7 +31,7 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Attempt to authenticate the request's credentials.
+     * Coba login dan catat percobaan gagal untuk rate limiter.
      *
      * @throws \Illuminate\Validation\ValidationException
      */
@@ -53,7 +51,7 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Ensure the login request is not rate limited.
+     * Cegah brute force login dengan batas percobaan per email dan IP.
      *
      * @throws \Illuminate\Validation\ValidationException
      */
@@ -75,9 +73,7 @@ class LoginRequest extends FormRequest
         ]);
     }
 
-    /**
-     * Get the rate limiting throttle key for the request.
-     */
+    // Gabungkan email dan IP sebagai kunci rate limit login.
     public function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());

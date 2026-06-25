@@ -1,4 +1,5 @@
 @php
+  // Tentukan judul topbar dari route aktif dan tampilkan role user.
   $title = match (true) {
     request()->routeIs('dashboard') => 'Dashboard',
     request()->routeIs('scan.index') => 'Upload Data',

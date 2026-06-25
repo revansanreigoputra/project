@@ -12,6 +12,7 @@ use Throwable;
 
 class DatabaseBackupController extends Controller
 {
+    // Tampilkan halaman backup beserta statistik, daftar file, dan setting jadwal.
     public function index()
     {
         $setting = DatabaseBackupSetting::current();
@@ -42,6 +43,7 @@ class DatabaseBackupController extends Controller
         ]);
     }
 
+    // Validasi format lalu buat backup database manual.
     public function store(Request $request, DatabaseBackupService $backupService)
     {
         $validated = $request->validate([
@@ -76,6 +78,7 @@ class DatabaseBackupController extends Controller
             ->with('toast_message', 'File '.$backup->file_name.' berhasil dibuat.');
     }
 
+    // Simpan pengaturan auto-backup dan hitung jadwal run berikutnya.
     public function updateSchedule(Request $request)
     {
         $validated = $request->validate([
@@ -112,6 +115,7 @@ class DatabaseBackupController extends Controller
             ->with('toast_message', $setting->enabled ? 'Auto-backup aktif.' : 'Auto-backup dinonaktifkan.');
     }
 
+    // Download file backup kalau prosesnya sudah selesai dan file masih ada.
     public function download(DatabaseBackup $backup)
     {
         if ($backup->status !== 'completed' || ! Storage::disk($backup->disk ?: 'local')->exists($backup->path)) {
@@ -124,6 +128,7 @@ class DatabaseBackupController extends Controller
         return Storage::disk($backup->disk ?: 'local')->download($backup->path, $backup->file_name);
     }
 
+    // Bentuk data backup untuk response JSON setelah backup selesai dibuat.
     private function backupPayload(DatabaseBackup $backup): array
     {
         return [
@@ -137,6 +142,7 @@ class DatabaseBackupController extends Controller
         ];
     }
 
+    // Format ukuran file backup jadi B, KB, MB, dan seterusnya.
     private function formatBytes(int|float $bytes): string
     {
         $bytes = max(0, (float) $bytes);

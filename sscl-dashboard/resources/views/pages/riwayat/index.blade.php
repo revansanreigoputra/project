@@ -3,6 +3,7 @@
 
 @section('page')
     @php
+        // Normalisasi data riwayat, filter aktif, dan helper format untuk tampilan.
         $historyItems = collect(is_object($history ?? null) && method_exists($history, 'items') ? $history->items() : ($history ?? []));
         $filters = array_merge([
             'search' => '',
@@ -34,6 +35,7 @@
 
     <div
         class="space-y-6"
+        {{-- State Alpine untuk modal hapus riwayat. --}}
         x-data="{
             deleteModalOpen: false,
             deleteFormAction: '',
@@ -187,6 +189,7 @@
                     <tbody class="divide-y divide-app">
                         @forelse ($historyItems as $item)
                             @php
+                                // Ambil status dan sumber data per baris riwayat.
                                 $status = $item['status'] ?? '-';
                                 $sourceLabel = $item['source_label'] ?? 'Manual';
                             @endphp
@@ -286,6 +289,7 @@
 
                     @if ($history->hasPages())
                         @php
+                            // Hitung window nomor halaman untuk pagination bawah tabel.
                             $currentPage = $history->currentPage();
                             $lastPage = method_exists($history, 'lastPage') ? $history->lastPage() : $currentPage;
                             $startPage = max(1, $currentPage - 2);

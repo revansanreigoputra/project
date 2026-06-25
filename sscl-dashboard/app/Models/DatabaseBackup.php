@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DatabaseBackup extends Model
 {
+    // Kolom backup yang diisi saat proses backup berjalan.
     protected $fillable = [
         'user_id',
         'disk',
@@ -22,6 +23,7 @@ class DatabaseBackup extends Model
         'meta',
     ];
 
+    // Casting metadata backup, waktu proses, dan ukuran file.
     protected function casts(): array
     {
         return [
@@ -32,11 +34,13 @@ class DatabaseBackup extends Model
         ];
     }
 
+    // Relasi ke user yang menjalankan backup manual.
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    // Format ukuran file backup agar enak dibaca di UI.
     public function sizeForHumans(): string
     {
         $bytes = max(0, (int) $this->size_bytes);

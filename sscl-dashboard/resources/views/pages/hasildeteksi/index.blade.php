@@ -3,6 +3,7 @@
 
 @section('page')
     @php
+        // Normalisasi data hasil deteksi supaya view tetap aman saat belum ada prediksi.
         $prediction = $prediction ?? null;
         $summary = array_merge([
             'normal' => 0,
@@ -47,6 +48,7 @@
         ];
         $statusForTone = fn ($tone) => $tone === 'accent' ? 'Aman' : ($tone === 'warning' ? 'Unknown' : 'Perlu Review');
         $recommendationForTone = fn ($tone) => $tone === 'accent' ? 'Arsipkan' : ($tone === 'warning' ? 'Validasi manual' : 'Prioritaskan');
+        // Ambil probabilitas terbesar untuk ringkasan modal detail baris.
         $topProbability = function ($probabilities) {
             $items = collect($probabilities ?? []);
 
@@ -69,6 +71,7 @@
         $latestDownloadUrl = $prediction && ! empty($prediction['scan_upload_id'])
             ? route('riwayat.download', ['scanUpload' => $prediction['scan_upload_id'], 'mode' => 'after'])
             : null;
+        // Susun distribusi label untuk grafik hasil terakhir.
         $labelCounts = collect($summary['labels'] ?? [])
             ->map(fn ($count) => (int) $count)
             ->filter(fn ($count) => $count > 0)
@@ -88,6 +91,7 @@
 
     <div
         class="space-y-6"
+        {{-- State Alpine untuk modal detail dan pagination riwayat terbaru. --}}
         x-data="{
             rowDetailOpen: false,
             rowDetail: { probabilities: [] },
@@ -204,6 +208,7 @@
                     <div class="mt-7 flex h-64 items-end gap-3 overflow-x-auto border-b border-app pb-4 md:gap-5">
                         @foreach ($labelCounts->sortDesc()->take(8) as $label => $count)
                             @php
+                                // Hitung tone dan tinggi bar grafik per label.
                                 $tone = $toneForLabel($label);
                                 $height = max(10, round(((int) $count / $maxLabelCount) * 100));
                             @endphp
@@ -452,6 +457,7 @@
                     <tbody class="divide-y divide-app">
                         @forelse ($results as $result)
                             @php
+                                // Bentuk data satu baris agar bisa dipakai tabel dan modal detail.
                                 $label = $result['label'] ?? 'Unknown';
                                 $tone = $toneForLabel($label);
                                 $probabilities = collect($result['probabilities'] ?? []);
@@ -581,6 +587,7 @@
 
                     @if ($resultsPaginator->hasPages())
                         @php
+                            // Hitung window nomor halaman agar pagination tetap ringkas.
                             $currentPage = $resultsPaginator->currentPage();
                             $lastPage = $resultsPaginator->lastPage();
                             $startPage = max(1, $currentPage - 2);

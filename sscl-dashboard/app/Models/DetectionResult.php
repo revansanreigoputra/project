@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DetectionResult extends Model
 {
+    // Kolom hasil deteksi yang boleh diisi dari service prediksi.
     protected $fillable = [
         'user_id',
         'scan_upload_id',
@@ -27,6 +28,7 @@ class DetectionResult extends Model
         'results_path',
     ];
 
+    // Casting hasil deteksi supaya angka, tanggal, dan JSON langsung siap dipakai.
     protected function casts(): array
     {
         return [
@@ -43,16 +45,19 @@ class DetectionResult extends Model
         ];
     }
 
+    // Relasi ke user yang menjalankan proses deteksi.
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    // Relasi ke file upload sumber dari hasil deteksi.
     public function scanUpload(): BelongsTo
     {
         return $this->belongsTo(ScanUpload::class);
     }
 
+    // Scope hasil deteksi milik user tertentu.
     public function scopeForUser(Builder $query, $user): Builder
     {
         return $user
@@ -60,6 +65,7 @@ class DetectionResult extends Model
             : $query->whereNull('user_id');
     }
 
+    // Scope visibilitas hasil deteksi berdasarkan permission user.
     public function scopeVisibleTo(Builder $query, $user): Builder
     {
         if ($user && $user->can('history.view-any')) {
@@ -69,11 +75,13 @@ class DetectionResult extends Model
         return $query->forUser($user);
     }
 
+    // Scope hasil deteksi yang sudah selesai diproses.
     public function scopeCompleted(Builder $query): Builder
     {
         return $query->where('status', 'Selesai');
     }
 
+    // Ubah model hasil deteksi jadi format prediksi untuk view.
     public function toPredictionArray(): array
     {
         $summary = $this->normalizedSummary();
@@ -90,6 +98,7 @@ class DetectionResult extends Model
         ];
     }
 
+    // Ubah hasil deteksi jadi format ringkas untuk riwayat.
     public function toHistoryArray(): array
     {
         $summary = $this->normalizedSummary();
@@ -110,6 +119,7 @@ class DetectionResult extends Model
         ];
     }
 
+    // Normalisasi summary agar data lama, data baru, dan fallback hitungan tetap konsisten.
     private function normalizedSummary(): array
     {
         $summary = $this->summary ?: [];
@@ -163,6 +173,7 @@ class DetectionResult extends Model
         ];
     }
 
+    // Format waktu proses ke WIB untuk tampilan.
     private function formattedProcessedAt(): string
     {
         $processedAt = $this->processed_at ?? $this->created_at;

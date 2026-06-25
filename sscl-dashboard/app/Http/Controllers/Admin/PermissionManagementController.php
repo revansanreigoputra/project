@@ -12,6 +12,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 class PermissionManagementController extends Controller
 {
+    // Tampilkan daftar permission dengan filter pencarian dan modul.
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -54,11 +55,13 @@ class PermissionManagementController extends Controller
         ]);
     }
 
+    // Tampilkan form tambah permission dan daftar role tujuan.
     public function create()
     {
         return view('pages.admin.permissions.create', $this->formData());
     }
 
+    // Buat permission baru lalu hubungkan ke role yang dipilih.
     public function store(Request $request)
     {
         $validated = $this->validatedPermission($request);
@@ -77,6 +80,7 @@ class PermissionManagementController extends Controller
             ->with('toast_message', 'Permission '.$permission->name.' berhasil dibuat.');
     }
 
+    // Tampilkan form edit permission dan tandai permission sistem yang dilindungi.
     public function edit(Permission $permission)
     {
         return view('pages.admin.permissions.edit', [
@@ -86,6 +90,7 @@ class PermissionManagementController extends Controller
         ]);
     }
 
+    // Update permission, tapi nama permission bawaan tetap dikunci.
     public function update(Request $request, Permission $permission)
     {
         $validated = $this->validatedPermission($request, $permission);
@@ -105,6 +110,7 @@ class PermissionManagementController extends Controller
             ->with('toast_message', 'Relasi permission '.$oldName.' berhasil diperbarui.');
     }
 
+    // Hapus permission custom kalau belum dipakai role atau user.
     public function destroy(Permission $permission)
     {
         if (in_array($permission->name, RolePermissionSeeder::PERMISSIONS, true)) {
@@ -132,6 +138,7 @@ class PermissionManagementController extends Controller
             ->with('toast_message', 'Permission '.$name.' berhasil dihapus.');
     }
 
+    // Validasi format nama permission dan role yang dipilih.
     private function validatedPermission(Request $request, ?Permission $permission = null): array
     {
         return $request->validate([
@@ -152,6 +159,7 @@ class PermissionManagementController extends Controller
         ]);
     }
 
+    // Siapkan daftar role untuk form permission.
     private function formData(): array
     {
         return [

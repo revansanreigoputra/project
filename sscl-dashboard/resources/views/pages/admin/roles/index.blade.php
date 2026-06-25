@@ -4,6 +4,7 @@
 @section('page')
   <div 
     class="space-y-6"
+    {{-- State Alpine untuk modal hapus role. --}}
     x-data="{
       deleteModalOpen: false,
       deleteFormAction: '',
@@ -60,7 +61,10 @@
 
     <div class="grid gap-5 xl:grid-cols-2">
       @forelse ($roles as $role)
-        @php($isSystemRole = in_array($role->name, $systemRoles, true))
+        @php
+          // Tandai role bawaan agar tidak bisa dihapus dari UI.
+          $isSystemRole = in_array($role->name, $systemRoles, true);
+        @endphp
         <div class="rounded-3xl bg-surface p-5 shadow-soft">
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">

@@ -3,6 +3,7 @@
 
 @section('page')
     @php
+        // Siapkan data detail riwayat untuk tab sebelum scan dan setelah scan.
         $historyItem = $historyItem ?? [];
         $sourcePreview = $sourcePreview ?? [
             'headers' => [],
@@ -29,6 +30,7 @@
 
     <div
         class="space-y-6"
+        {{-- State ringan untuk modal hapus dan filter preview di halaman detail riwayat. --}}
         x-data="{
             deleteModalOpen: false,
             beforeSearch: '',
@@ -335,6 +337,7 @@
                             <tbody class="divide-y divide-app">
                                 @forelse ($results as $result)
                                     @php
+                                        // Ambil label, tone, probabilitas, dan catatan guardrail untuk baris hasil deteksi.
                                         $label = $result['label'] ?? 'Unknown';
                                         $tone = $toneForLabel($label);
                                         $probabilities = $result['probabilities'] ?? [];
@@ -389,6 +392,7 @@
 
                             @if ($afterResultsPaginator->hasPages())
                                 @php
+                                    // Hitung window nomor halaman untuk tabel hasil setelah scan.
                                     $currentPage = $afterResultsPaginator->currentPage();
                                     $lastPage = $afterResultsPaginator->lastPage();
                                     $startPage = max(1, $currentPage - 2);

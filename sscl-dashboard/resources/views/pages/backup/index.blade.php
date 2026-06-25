@@ -3,6 +3,7 @@
 
 @section('page')
   @php
+    // Siapkan label, class status, dan waktu backup dalam zona WIB.
     $formatLabel = fn (string $format) => strtoupper($format);
     $frequencyLabels = [
       'daily' => 'Harian',
@@ -62,6 +63,7 @@
     <div class="grid gap-6 xl:grid-cols-12">
       <section
         class="rounded-3xl border border-app bg-surface p-6 shadow-soft xl:col-span-7"
+        {{-- Config Alpine untuk menjalankan backup manual lewat request JSON. --}}
         x-data="backupConsole({
           endpoint: @js(route('backup.store')),
           token: @js(csrf_token()),
@@ -168,6 +170,7 @@
           </div>
         </div>
 
+        {{-- State Alpine kecil untuk menampilkan field mingguan/bulanan sesuai frekuensi. --}}
         <form method="POST" action="{{ route('backup.schedule') }}" class="mt-6 space-y-4" x-data="{ frequency: @js(old('frequency', $setting->frequency)) }">
           @csrf
           @method('PATCH')

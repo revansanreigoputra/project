@@ -10,21 +10,25 @@ use RuntimeException;
 
 class VpsCsvService
 {
+    // Upload isi CSV langsung ke disk VPS target.
     public function uploadCsv(string $filename, string $csvContent): bool
     {
         return Storage::disk($this->targetDisk())->put($filename, $csvContent);
     }
 
+    // Hapus CSV di VPS target berdasarkan nama file.
     public function deleteCsv(string $filename): bool
     {
         return Storage::disk($this->targetDisk())->delete($filename);
     }
 
+    // Cek apakah CSV tertentu sudah ada di VPS target.
     public function exists(string $filename): bool
     {
         return Storage::disk($this->targetDisk())->exists($filename);
     }
 
+    // Ambil daftar file CSV dari folder sumber VPS.
     public function csvFiles(?int $limit = null): array
     {
         $directory = $this->normalizeDirectory(
@@ -44,6 +48,7 @@ class VpsCsvService
         return $csvFiles->all();
     }
 
+    // Baca isi CSV dari disk VPS sumber.
     public function readCsv(string $path): string
     {
         $contents = Storage::disk($this->sourceDisk())->get($path);
@@ -55,11 +60,13 @@ class VpsCsvService
         return $contents;
     }
 
+    // Buat penanda unik dari isi file supaya proses bisa cek duplikasi.
     public function externalReference(string $contents): string
     {
         return 'vps:'.hash('sha256', $contents);
     }
 
+    // Publish file upload asli dari storage lokal ke VPS target.
     public function publishOriginalUpload(ScanUpload $upload): string
     {
         $targetPath = $this->targetPath(
@@ -72,6 +79,7 @@ class VpsCsvService
         return $targetPath;
     }
 
+    // Publish file hasil deteksi ke VPS target kalau hasil CSV-nya tersedia.
     public function publishDetectionResult(DetectionResult $detectionResult): ?string
     {
         if (! $detectionResult->results_path) {
@@ -88,11 +96,13 @@ class VpsCsvService
         return $targetPath;
     }
 
+    // Hapus CSV sumber setelah selesai diproses jika config mengaktifkannya.
     public function deleteSourceCsv(string $path): bool
     {
         return Storage::disk($this->sourceDisk())->delete($path);
     }
 
+    // Salin file dari storage lokal ke disk VPS target menggunakan stream.
     private function copyFromLocalStorage(string $sourcePath, string $targetPath): void
     {
         $stream = Storage::readStream($sourcePath);
@@ -114,6 +124,7 @@ class VpsCsvService
         }
     }
 
+    // Bentuk path target yang bersih dari slash ganda dan path folder lokal.
     private function targetPath(string $directory, string $filename): string
     {
         $directory = $this->normalizeDirectory($directory);
@@ -122,16 +133,19 @@ class VpsCsvService
         return $directory === '' ? $filename : $directory.'/'.$filename;
     }
 
+    // Normalisasi nama folder VPS supaya konsisten memakai slash biasa.
     private function normalizeDirectory(string $directory): string
     {
         return trim(str_replace('\\', '/', $directory), '/');
     }
 
+    // Ambil nama disk sumber dari config service.
     private function sourceDisk(): string
     {
         return (string) config('services.vps_csv.source_disk', 'vps_dataset');
     }
 
+    // Ambil nama disk target dari config service.
     private function targetDisk(): string
     {
         return (string) config('services.vps_csv.target_disk', 'vps_csv');

@@ -18,6 +18,7 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+// Command buat menjalankan backup database yang sudah jatuh tempo.
 Artisan::command('backup:run-scheduled', function (DatabaseBackupService $backupService) {
     $setting = DatabaseBackupSetting::current();
 
@@ -40,6 +41,7 @@ Artisan::command('backup:run-scheduled', function (DatabaseBackupService $backup
     return 0;
 })->purpose('Run due scheduled database backups');
 
+// Command buat ambil data trafik dari API UPA-TIK lalu langsung jalankan deteksi.
 Artisan::command(
     'traffic:fetch-upa-tik',
     function (
@@ -71,6 +73,7 @@ Artisan::command(
         }
 
         $sourceName = (string) config('services.upa_tik.source_name', 'UPA-TIK');
+        // Cari user sistem yang akan jadi pemilik data hasil sinkronisasi API.
         $resolveSystemUser = function (): ?User {
             $configuredEmail = trim((string) config('services.upa_tik.system_user_email'));
 
@@ -91,11 +94,13 @@ Artisan::command(
                 ->oldest('id')
                 ->first();
         };
+        // Cek duplikasi supaya dataset API yang sama tidak diproses berkali-kali.
         $uploadExists = fn (string $datasetSourceName, string $externalReference): bool => ScanUpload::query()
             ->where('source', 'api')
             ->where('source_name', $datasetSourceName)
             ->where('external_reference', $externalReference)
             ->exists();
+        // Response berupa file langsung disimpan sebagai upload API lalu diprediksi.
         $processFileResponse = function (
             array $fileResponse,
             ?int $systemUserId,
@@ -200,6 +205,7 @@ Artisan::command(
     }
 )->purpose('Fetch traffic data from UPA-TIK API when integration is enabled');
 
+// Command buat ambil file CSV dari folder VPS dan menjalankan deteksi otomatis.
 Artisan::command(
     'traffic:fetch-vps-csv {--limit= : Jumlah maksimal file CSV yang diproses dalam satu run} {--dry-run : Tampilkan file CSV tanpa memprosesnya}',
     function (
@@ -244,6 +250,7 @@ Artisan::command(
 
         $sourceName = trim((string) config('services.vps_csv.source_name', 'VPS Syslog Dataset'))
             ?: 'VPS Syslog Dataset';
+        // Cari user sistem yang dipakai sebagai pemilik upload CSV VPS.
         $systemUser = (function (): ?User {
             $configuredEmail = trim((string) config('services.vps_csv.system_user_email'));
 
@@ -264,6 +271,7 @@ Artisan::command(
                 ->oldest('id')
                 ->first();
         })();
+        // Cek hash file agar CSV VPS yang sama tidak diproses ulang.
         $uploadExists = fn (string $externalReference): bool => ScanUpload::query()
             ->where('source', 'api')
             ->where('external_reference', $externalReference)
@@ -348,6 +356,7 @@ Artisan::command(
     }
 )->purpose('Fetch CSV files from a VPS directory and run traffic detection');
 
+// Scheduler menjalankan command otomatis sesuai config masing-masing fitur.
 Schedule::command('backup:run-scheduled')->everyMinute()->withoutOverlapping();
 Schedule::command('traffic:fetch-upa-tik')
     ->daily()
@@ -361,10 +370,12 @@ $vpsCsvSchedule = Schedule::command('traffic:fetch-vps-csv')
 
 $vpsCsvScheduleTime = (string) config('services.vps_csv.schedule_time', '00:00');
 
+// Kalau format jam tidak valid, pakai jadwal aman default tengah malam.
 if (! preg_match('/^\d{2}:\d{2}$/', $vpsCsvScheduleTime)) {
     $vpsCsvScheduleTime = '00:00';
 }
 
+// Pilih frekuensi scheduler CSV VPS dari config env.
 match ((string) config('services.vps_csv.schedule', 'daily')) {
     'every_minute' => $vpsCsvSchedule->everyMinute(),
     'every_five_minutes' => $vpsCsvSchedule->everyFiveMinutes(),

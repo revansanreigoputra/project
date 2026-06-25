@@ -16,6 +16,7 @@ use ZipArchive;
 
 class HistoryController extends Controller
 {
+    // Tampilkan riwayat upload dengan filter pencarian, tanggal, sumber, dan status deteksi.
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -108,6 +109,7 @@ class HistoryController extends Controller
         ]);
     }
 
+    // Tampilkan detail upload, termasuk preview sebelum scan dan hasil setelah scan.
     public function show(Request $request, ScanUpload $scanUpload)
     {
         $this->ensureUploadBelongsToUser($scanUpload, $request);
@@ -162,6 +164,7 @@ class HistoryController extends Controller
         ]);
     }
 
+    // Hapus riwayat upload beserta file asli dan file hasil deteksinya.
     public function destroy(Request $request, ScanUpload $scanUpload)
     {
         $this->ensureUploadBelongsToUser($scanUpload, $request);
@@ -195,6 +198,7 @@ class HistoryController extends Controller
             ->with('toast_message', 'Data "'.$fileName.'" berhasil dihapus sampai file asli dan hasil deteksinya.');
     }
 
+    // Download file asli atau file hasil deteksi sesuai mode yang dipilih user.
     public function download(Request $request, ScanUpload $scanUpload, string $mode)
     {
         $this->ensureUploadBelongsToUser($scanUpload, $request);
@@ -206,6 +210,7 @@ class HistoryController extends Controller
         return $this->downloadPrediction($scanUpload);
     }
 
+    // Terapkan filter rentang tanggal ke kolom query yang sedang dipakai.
     private function applyDateRange($query, string $column, ?Carbon $startAt, ?Carbon $endAt): void
     {
         if ($startAt && $endAt) {
@@ -225,6 +230,7 @@ class HistoryController extends Controller
         }
     }
 
+    // Pastikan user hanya bisa membuka upload miliknya, kecuali punya akses lihat semua.
     private function ensureUploadBelongsToUser(ScanUpload $scanUpload, Request $request): void
     {
         if ($request->user()?->can('history.view-any')) {
@@ -237,6 +243,7 @@ class HistoryController extends Controller
         );
     }
 
+    // Ubah model upload jadi array siap pakai untuk kartu dan tabel riwayat.
     private function toHistoryArray(ScanUpload $scanUpload): array
     {
         $latestDetectionResult = $scanUpload->detectionResults->first();
@@ -282,6 +289,7 @@ class HistoryController extends Controller
         ];
     }
 
+    // Download file asli yang pernah diupload user.
     private function downloadOriginalUpload(ScanUpload $scanUpload)
     {
         if (! $scanUpload->path || ! Storage::exists($scanUpload->path)) {
@@ -294,6 +302,7 @@ class HistoryController extends Controller
         return Storage::download($scanUpload->path, $scanUpload->original_name);
     }
 
+    // Download hasil deteksi dari file CSV tersimpan, atau generate ulang dari data hasil.
     private function downloadPrediction(ScanUpload $scanUpload)
     {
         $detectionResult = $scanUpload->detectionResults()
@@ -353,6 +362,7 @@ class HistoryController extends Controller
         ]);
     }
 
+    // Buat nama file download yang aman dan tetap mudah dikenali.
     private function downloadFileName(ScanUpload $scanUpload, string $suffix, string $extension): string
     {
         $baseName = pathinfo($scanUpload->original_name, PATHINFO_FILENAME) ?: 'riwayat';
@@ -361,11 +371,13 @@ class HistoryController extends Controller
         return $slug.'-'.$suffix.'.'.$extension;
     }
 
+    // Ubah angka probabilitas desimal jadi persen untuk isi CSV.
     private function csvPercent($value): string
     {
         return number_format(((float) $value) * 100, 2, '.', '');
     }
 
+    // Kumpulkan semua label probabilitas supaya kolom CSV konsisten.
     private function probabilityLabels(Collection $results, string $normalLabel = 'Normal'): array
     {
         return $results
@@ -376,6 +388,7 @@ class HistoryController extends Controller
             ->all();
     }
 
+    // Tentukan status riwayat dari hasil deteksi terbaru atau status upload.
     private function displayStatus(ScanUpload $scanUpload, ?DetectionResult $detectionResult): string
     {
         if ($detectionResult) {
@@ -391,6 +404,7 @@ class HistoryController extends Controller
         };
     }
 
+    // Format waktu ke WIB untuk halaman riwayat.
     private function formatDateTime($dateTime): string
     {
         return $dateTime
@@ -398,6 +412,7 @@ class HistoryController extends Controller
             : '-';
     }
 
+    // Ambil preview file asli supaya user bisa membandingkan data sebelum dan sesudah scan.
     private function previewUpload(ScanUpload $scanUpload, int $limit = 100): array
     {
         if (! $scanUpload->path || ! Storage::exists($scanUpload->path)) {
@@ -421,6 +436,7 @@ class HistoryController extends Controller
         return $this->emptyPreview('Preview data asli untuk format .'.($extension ?: '-').' belum didukung.');
     }
 
+    // Baca preview CSV/TXT dengan delimiter yang terdeteksi otomatis.
     private function previewDelimitedUpload(ScanUpload $scanUpload, int $limit): array
     {
         $contents = Storage::get($scanUpload->path);
@@ -450,6 +466,7 @@ class HistoryController extends Controller
         return $this->rowsToPreview($rows, $limit);
     }
 
+    // Baca preview XLSX langsung dari XML sheet pertama.
     private function previewXlsxUpload(ScanUpload $scanUpload, int $limit): array
     {
         if (! class_exists(ZipArchive::class)) {
@@ -512,6 +529,7 @@ class HistoryController extends Controller
         return $this->rowsToPreview($xlsxRows, $limit);
     }
 
+    // Ambil daftar shared string XLSX agar nilai sel teks bisa dibaca benar.
     private function loadXlsxSharedStrings(ZipArchive $zip): array
     {
         $sharedStringsXml = $zip->getFromName('xl/sharedStrings.xml');
@@ -539,6 +557,7 @@ class HistoryController extends Controller
             ->all();
     }
 
+    // Ambil nilai sel XLSX, termasuk tipe shared string dan inline string.
     private function xlsxCellValue(SimpleXMLElement $cell, array $sharedStrings): string
     {
         $cell->registerXPathNamespace('x', 'http://schemas.openxmlformats.org/spreadsheetml/2006/main');
@@ -559,6 +578,7 @@ class HistoryController extends Controller
         return $value;
     }
 
+    // Ubah referensi kolom XLSX seperti A atau AB menjadi index angka.
     private function xlsxColumnIndex(string $cellReference): int
     {
         $letters = preg_replace('/[^A-Z]/', '', strtoupper($cellReference));
@@ -571,6 +591,7 @@ class HistoryController extends Controller
         return max(0, $index - 1);
     }
 
+    // Deteksi delimiter paling mungkin dari baris pertama file teks.
     private function detectDelimiter(string $contents): string
     {
         $firstLine = preg_split("/\r\n|\n|\r/", $contents, 2)[0] ?? '';
@@ -585,6 +606,7 @@ class HistoryController extends Controller
         return (int) reset($counts) > 0 ? (string) key($counts) : ',';
     }
 
+    // Ubah baris mentah menjadi struktur preview dengan header dan batas jumlah baris.
     private function rowsToPreview(array $rows, int $limit): array
     {
         if ($rows === []) {
@@ -615,6 +637,7 @@ class HistoryController extends Controller
         ];
     }
 
+    // Isi nama kolom kosong supaya preview tabel tetap punya header jelas.
     private function normalizeHeaders(array $headers, int $width): array
     {
         return array_map(
@@ -623,6 +646,7 @@ class HistoryController extends Controller
         );
     }
 
+    // Buat response preview kosong dengan pesan yang bisa langsung ditampilkan.
     private function emptyPreview(string $message): array
     {
         return [

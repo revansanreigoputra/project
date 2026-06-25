@@ -19,6 +19,7 @@ use Throwable;
 
 class TrafficDetectionService
 {
+    // Simpan upload manual dari form scan lalu catat metadatanya ke database.
     public function storeManualUpload(UploadedFile $file, ?int $userId): ScanUpload
     {
         $path = $file->store('scan-uploads');
@@ -42,6 +43,7 @@ class TrafficDetectionService
         ]);
     }
 
+    // Simpan dataset API yang sudah dimapping menjadi CSV lokal.
     public function storeApiCsv(
         array $rows,
         string $originalName,
@@ -90,6 +92,7 @@ class TrafficDetectionService
         ]);
     }
 
+    // Simpan file mentah dari API UPA-TIK tanpa mapping tambahan.
     public function storeApiFile(
         string $contents,
         string $originalName,
@@ -119,6 +122,7 @@ class TrafficDetectionService
         ]);
     }
 
+    // Kirim file ke Flask ML API, simpan hasil prediksi, lalu kirim notifikasi jika aktif.
     public function detect(ScanUpload $upload, ?int $userId = null, array $options = []): DetectionResult
     {
         $processStartedAt = microtime(true);
@@ -221,6 +225,7 @@ class TrafficDetectionService
         return $detectionResult->fresh(['scanUpload', 'user']);
     }
 
+    // Buat record upload dari path storage dan metadata file.
     private function createUploadRecord(string $path, array $attributes): ScanUpload
     {
         return ScanUpload::create([
@@ -230,6 +235,7 @@ class TrafficDetectionService
         ]);
     }
 
+    // Bentuk path storage khusus upload dari API agar terpisah dari upload manual.
     private function apiStoragePath(string $originalName, string $extension): string
     {
         $baseName = pathinfo($originalName, PATHINFO_FILENAME) ?: 'upa-tik-traffic';
@@ -239,6 +245,7 @@ class TrafficDetectionService
         return 'scan-uploads/api/'.now('Asia/Jakarta')->format('Y/m').'/'.Str::uuid().'-'.$slug.'.'.$safeExtension;
     }
 
+    // Tentukan MIME type berdasarkan ekstensi file yang masuk dari API.
     private function mimeTypeForExtension(string $extension): string
     {
         return match (strtolower($extension)) {
@@ -250,6 +257,7 @@ class TrafficDetectionService
         };
     }
 
+    // Hitung ringkasan normal, malware, unknown, confidence, dan guardrail dari payload prediksi.
     private function summarizePrediction(Collection $results, int $total, array $payload = []): array
     {
         $normalLabel = (string) ($payload['normal_label'] ?? 'Normal');
@@ -297,6 +305,7 @@ class TrafficDetectionService
         ];
     }
 
+    // Export seluruh hasil prediksi ke CSV agar bisa didownload tanpa membebani kolom JSON.
     private function storePredictionResults(DetectionResult $detectionResult, ScanUpload $upload, Collection $results, array $summary = []): string
     {
         $path = 'scan-results/'.$detectionResult->id.'-'.$this->downloadFileName($upload, 'hasil-deteksi', 'csv');
@@ -339,6 +348,7 @@ class TrafficDetectionService
         return $path;
     }
 
+    // Buat nama file hasil deteksi yang aman untuk download.
     private function downloadFileName(ScanUpload $upload, string $suffix, string $extension): string
     {
         $baseName = pathinfo($upload->original_name, PATHINFO_FILENAME) ?: 'riwayat';
@@ -347,11 +357,13 @@ class TrafficDetectionService
         return $slug.'-'.$suffix.'.'.$extension;
     }
 
+    // Ubah probabilitas desimal dari model menjadi persen untuk CSV.
     private function csvPercent($value): string
     {
         return number_format(((float) $value) * 100, 2, '.', '');
     }
 
+    // Kumpulkan label probabilitas agar kolom export CSV stabil.
     private function probabilityLabels(Collection $results, string $normalLabel = 'Normal'): array
     {
         $labels = $results
@@ -365,6 +377,7 @@ class TrafficDetectionService
             ->all();
     }
 
+    // Tandai proses gagal di database lalu kembalikan error validasi ke pemanggil.
     private function failDetection(DetectionResult $detectionResult, ScanUpload $upload, string $message): void
     {
         $detectionResult->update([
@@ -380,6 +393,7 @@ class TrafficDetectionService
         ]);
     }
 
+    // Kirim email ringkasan hasil deteksi ke Petugas yang punya akses melihat data terkait.
     private function sendDetectionCompletedEmail(?DetectionResult $detectionResult, array $summary, float $durationSeconds): void
     {
         if (! $detectionResult) {
@@ -414,6 +428,7 @@ class TrafficDetectionService
         }
     }
 
+    // Pastikan penerima email memang Petugas dan boleh melihat hasil deteksi ini.
     private function canReceiveDetectionCompletedEmail(User $user, DetectionResult $detectionResult): bool
     {
         if (! $user->hasRole('Petugas') || ! $user->canAny(['detection.view', 'reports.view'])) {

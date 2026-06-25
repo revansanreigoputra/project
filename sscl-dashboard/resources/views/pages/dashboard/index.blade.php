@@ -3,6 +3,7 @@
 
 @section('page')
   @php
+    // Normalisasi data dashboard supaya semua kartu dan grafik punya fallback.
     $stats = array_merge([
       'total_detections' => 0,
       'total_uploads' => 0,
@@ -70,6 +71,7 @@
 
   <div
     class="space-y-6"
+    {{-- State Alpine untuk modal detail kartu dan pagination aktivitas terbaru. --}}
     x-data="{
       detailOpen: false,
       activeDetail: { title: '', description: '', items: [] },
@@ -170,6 +172,7 @@
         <div class="mt-7 flex h-72 items-end gap-3 overflow-x-auto border-b border-app pb-4 md:gap-5">
           @forelse ($trend as $month)
             @php
+              // Hitung tinggi bar tren dan komposisi normal/malware per bulan.
               $height = max(8, round(((int) $month['total'] / $maxTrend) * 100));
               $normalHeight = (int) $month['total'] > 0 ? round(((int) $month['normal'] / (int) $month['total']) * 100) : 0;
               $malwareHeight = (int) $month['total'] > 0 ? round(((int) $month['malware'] / (int) $month['total']) * 100) : 0;
@@ -208,6 +211,7 @@
         <div class="mt-6 space-y-4">
           @forelse ($labelStats as $item)
             @php
+              // Siapkan payload detail saat user klik label distribusi.
               $width = max(5, round(((int) $item['count'] / $maxLabel) * 100));
               $labelPayload = [
                 'title' => 'Label '.$item['label'],
@@ -272,6 +276,7 @@
         <div class="mt-5 space-y-3 lg:hidden">
           @forelse ($recentDetections as $item)
             @php
+              // Siapkan payload modal ringkasan untuk item deteksi versi mobile.
               $detailPayload = [
                 'title' => 'Detail Deteksi',
                 'description' => $item['file_name'],
@@ -337,6 +342,7 @@
             <tbody class="divide-y divide-app">
               @forelse ($recentDetections as $item)
                 @php
+                  // Siapkan payload modal ringkasan untuk baris deteksi versi desktop.
                   $detailPayload = [
                     'title' => 'Detail Deteksi',
                     'description' => $item['file_name'],

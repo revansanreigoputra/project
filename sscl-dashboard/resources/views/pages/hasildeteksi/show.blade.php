@@ -3,6 +3,7 @@
 
 @section('page')
     @php
+        // Siapkan data review hasil deteksi, termasuk filter tabel dan formatter angka.
         $prediction = $prediction ?? [];
         $summary = $prediction['summary'] ?? [];
         $resultsPaginator = $resultsPaginator ?? null;
@@ -42,6 +43,7 @@
         ];
         $statusForTone = fn ($tone) => $tone === 'accent' ? 'Aman' : ($tone === 'warning' ? 'Unknown' : 'Perlu Review');
         $recommendationForTone = fn ($tone) => $tone === 'accent' ? 'Arsipkan' : ($tone === 'warning' ? 'Validasi manual' : 'Prioritaskan');
+        // Cari label dengan probabilitas tertinggi untuk ditampilkan sebagai top prediksi.
         $topProbability = function ($probabilities) {
             $items = collect($probabilities ?? []);
 
@@ -71,6 +73,7 @@
         $processedAt = $formatDateTime($detectionResult->processed_at ?? $detectionResult->created_at);
         $uploadedAt = $formatDateTime($detectionResult->scanUpload?->created_at);
         $sourceLabel = $detectionResult->scanUpload?->sourceLabel() ?? 'Manual';
+        // Susun data label untuk opsi filter, grafik, dan ringkasan malware.
         $labelOptions = collect($labelOptions ?? [])->whenEmpty(fn ($items) => collect($summary['labels'] ?? [])->keys())->whenEmpty(fn ($items) => collect([$normalLabel]));
         $labelCounts = collect($summary['labels'] ?? [])
             ->map(fn ($count) => (int) $count)
@@ -94,6 +97,7 @@
 
     <div
         class="space-y-6"
+        {{-- State Alpine untuk membuka modal detail baris hasil deteksi. --}}
         x-data="{
             rowDetailOpen: false,
             rowDetail: { probabilities: [] },
@@ -297,6 +301,7 @@
                     <div class="mt-7 flex h-72 items-end gap-3 overflow-x-auto border-b border-app pb-4 md:gap-5">
                         @foreach ($chartLabels as $label => $count)
                             @php
+                                // Hitung tinggi bar dan tone warna untuk grafik label.
                                 $tone = $toneForLabel($label);
                                 $height = max(10, round(((int) $count / $maxLabelCount) * 100));
                             @endphp
@@ -383,6 +388,7 @@
                     <div class="mt-5 space-y-4">
                         @forelse ($malwareLabels as $label => $count)
                             @php
+                                // Hitung lebar bar untuk label malware yang paling sering muncul.
                                 $width = max(5, round(((int) $count / $maxLabelCount) * 100));
                             @endphp
                             <div>
@@ -512,6 +518,7 @@
                     <tbody class="divide-y divide-app">
                         @forelse ($results as $result)
                             @php
+                                // Siapkan payload baris untuk tabel dan modal detail.
                                 $label = $result['label'] ?? 'Unknown';
                                 $tone = $toneForLabel($label);
                                 $probabilities = $result['probabilities'] ?? [];
@@ -641,6 +648,7 @@
 
                     @if ($resultsPaginator->hasPages())
                         @php
+                            // Hitung window nomor halaman agar navigasi tabel tidak terlalu panjang.
                             $currentPage = $resultsPaginator->currentPage();
                             $lastPage = $resultsPaginator->lastPage();
                             $startPage = max(1, $currentPage - 2);

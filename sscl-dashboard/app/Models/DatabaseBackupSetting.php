@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DatabaseBackupSetting extends Model
 {
+    // Opsi format, frekuensi, dan timezone utama untuk fitur backup database.
     public const FORMATS = ['sql', 'zip'];
 
     public const FREQUENCIES = ['daily', 'weekly', 'monthly'];
 
     public const TIMEZONE = 'Asia/Jakarta';
 
+    // Kolom setting backup yang bisa diubah dari halaman admin/petugas.
     protected $fillable = [
         'enabled',
         'frequency',
@@ -27,6 +29,7 @@ class DatabaseBackupSetting extends Model
         'updated_by',
     ];
 
+    // Casting setting jadwal supaya boolean, angka, dan tanggal terbaca tepat.
     protected function casts(): array
     {
         return [
@@ -39,6 +42,7 @@ class DatabaseBackupSetting extends Model
         ];
     }
 
+    // Ambil setting backup aktif, atau buat default pertama kali.
     public static function current(): self
     {
         return static::query()->first()
@@ -53,11 +57,13 @@ class DatabaseBackupSetting extends Model
             ]);
     }
 
+    // Relasi ke user terakhir yang mengubah setting backup.
     public function updatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    // Hitung jadwal backup berikutnya dari waktu acuan yang diberikan.
     public function nextRunAfter(?CarbonInterface $after = null)
     {
         $base = ($after ? $after->copy() : now())->timezone(self::TIMEZONE);
@@ -88,6 +94,7 @@ class DatabaseBackupSetting extends Model
         return $candidate->utc();
     }
 
+    // Normalisasi jam jadwal menjadi format HH:MM.
     public function normalizedTime(): string
     {
         $value = (string) $this->scheduled_time;

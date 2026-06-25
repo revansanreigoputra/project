@@ -3,25 +3,30 @@ import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
 
+// State utama layout: sidebar mobile dan mode tema.
 Alpine.data('ui', () => ({
   mobileOpen: false,
   theme: localStorage.getItem('theme') || 'light',
 
+  // Terapkan tema terakhir saat halaman pertama kali dimuat.
   init() {
     this.applyTheme(this.theme);
   },
 
+  // Simpan pilihan tema dan pasang class dark di root HTML.
   applyTheme(theme) {
     this.theme = theme;
     localStorage.setItem('theme', theme);
     document.documentElement.classList.toggle('dark', theme === 'dark');
   },
 
+  // Toggle tema terang dan gelap dari tombol UI.
   toggleTheme() {
     this.applyTheme(this.theme === 'dark' ? 'light' : 'dark');
   },
 }));
 
+// State dialog konfirmasi global untuk aksi seperti hapus data.
 Alpine.data('confirmDialog', () => ({
   isOpen: false,
   dialog: {
@@ -36,6 +41,7 @@ Alpine.data('confirmDialog', () => ({
     tone: 'danger',
   },
 
+  // Buka dialog dengan config aksi yang dikirim dari tombol pemicu.
   open(config = {}) {
     this.dialog = {
       ...this.dialog,
@@ -53,11 +59,13 @@ Alpine.data('confirmDialog', () => ({
     this.$nextTick(() => this.$refs.cancelButton?.focus());
   },
 
+  // Tutup dialog tanpa menjalankan aksi.
   close() {
     this.isOpen = false;
   },
 }));
 
+// State console backup database manual di halaman backup.
 Alpine.data('backupConsole', (config = {}) => ({
   endpoint: config.endpoint,
   token: config.token,
@@ -69,6 +77,7 @@ Alpine.data('backupConsole', (config = {}) => ({
   latest: null,
   timer: null,
 
+  // Mulai request backup dan update progress UI sampai selesai atau gagal.
   start() {
     if (this.busy) return;
 
@@ -128,6 +137,7 @@ Alpine.data('backupConsole', (config = {}) => ({
   },
 }));
 
+// State halaman upload scan: upload file, filter hasil, pagination, dan detail baris.
 Alpine.data('scanUploadPage', (config = {}) => ({
   fileName: '',
   uploadId: null,
@@ -148,6 +158,7 @@ Alpine.data('scanUploadPage', (config = {}) => ({
   rowDetailOpen: false,
   rowDetail: { probabilities: [] },
 
+  // Filter dan sort hasil prediksi yang dikirim dari backend.
   get filteredRows() {
     const search = this.resultSearch.trim().toLowerCase();
     const rows = this.results.filter((row) => {
@@ -168,10 +179,12 @@ Alpine.data('scanUploadPage', (config = {}) => ({
     });
   },
 
+  // Hitung jumlah halaman berdasarkan hasil filter.
   get totalPages() {
     return Math.max(1, Math.ceil(this.filteredRows.length / Number(this.perPage || 10)));
   },
 
+  // Ambil baris yang tampil di halaman pagination saat ini.
   get pagedRows() {
     const currentPage = Math.min(this.page, this.totalPages);
     const start = (currentPage - 1) * Number(this.perPage || 10);
@@ -179,14 +192,17 @@ Alpine.data('scanUploadPage', (config = {}) => ({
     return this.filteredRows.slice(start, start + Number(this.perPage || 10));
   },
 
+  // Hitung nomor awal baris yang sedang ditampilkan.
   get rangeStart() {
     return this.filteredRows.length === 0 ? 0 : ((Math.min(this.page, this.totalPages) - 1) * Number(this.perPage || 10)) + 1;
   },
 
+  // Hitung nomor akhir baris yang sedang ditampilkan.
   get rangeEnd() {
     return Math.min(this.rangeStart + Number(this.perPage || 10) - 1, this.filteredRows.length);
   },
 
+  // Hitung jumlah filter aktif untuk indikator UI.
   get activeFilterCount() {
     return [
       this.resultSearch.trim() !== '',
@@ -196,6 +212,7 @@ Alpine.data('scanUploadPage', (config = {}) => ({
     ].filter(Boolean).length;
   },
 
+  // Ambil nilai pembanding sesuai kolom sort yang dipilih.
   sortValue(row) {
     if (this.resultSort === 'label') return row.label || '';
     if (this.resultSort === 'confidence') return Number(row.confidence || 0);
@@ -203,10 +220,12 @@ Alpine.data('scanUploadPage', (config = {}) => ({
     return Number.isFinite(Number(row.row)) ? Number(row.row) : (row.row || '');
   },
 
+  // Balikkan pagination ke halaman pertama setelah filter berubah.
   resetPage() {
     this.page = 1;
   },
 
+  // Reset semua filter hasil prediksi ke kondisi awal.
   resetResultFilters() {
     this.resultSearch = '';
     this.resultLabel = 'all';
@@ -215,6 +234,7 @@ Alpine.data('scanUploadPage', (config = {}) => ({
     this.resetPage();
   },
 
+  // Ubah kolom sort atau balik arah sort kalau kolomnya sama.
   toggleSort(field) {
     if (this.resultSort === field) {
       this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
@@ -226,15 +246,18 @@ Alpine.data('scanUploadPage', (config = {}) => ({
     this.resetPage();
   },
 
+  // Buka modal detail untuk satu baris hasil prediksi.
   openRowDetail(row) {
     this.rowDetail = row;
     this.rowDetailOpen = true;
   },
 
+  // Trigger input file tersembunyi dari tombol atau area drop.
   chooseFile() {
     this.$refs.csvFile.click();
   },
 
+  // Validasi file dari input lalu upload dulu ke backend.
   async setFile(files) {
     const file = files && files.length ? files[0] : null;
 
@@ -264,6 +287,7 @@ Alpine.data('scanUploadPage', (config = {}) => ({
     await this.uploadFile(file);
   },
 
+  // Upload file ke route scan.upload dan simpan ID upload untuk proses deteksi berikutnya.
   async uploadFile(file) {
     this.isUploading = true;
 
@@ -299,6 +323,7 @@ Alpine.data('scanUploadPage', (config = {}) => ({
     }
   },
 
+  // Handle file yang dilepas ke area drag and drop.
   async dropFile(event) {
     this.isDragging = false;
     const files = event.dataTransfer.files;

@@ -13,6 +13,7 @@ class DetectionCompletedMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    // Siapkan data hasil deteksi yang akan dipakai saat email dirender.
     public function __construct(
         public DetectionResult $detectionResult,
         public array $summary,
@@ -21,6 +22,7 @@ class DetectionCompletedMail extends Mailable
         $this->detectionResult->loadMissing(['scanUpload.user', 'user']);
     }
 
+    // Atur subject email berdasarkan nama file hasil deteksi.
     public function envelope(): Envelope
     {
         $fileName = $this->detectionResult->file_name
@@ -32,6 +34,7 @@ class DetectionCompletedMail extends Mailable
         );
     }
 
+    // Kirim data ringkasan ke template email notifikasi.
     public function content(): Content
     {
         return new Content(
@@ -56,6 +59,7 @@ class DetectionCompletedMail extends Mailable
         );
     }
 
+    // Ambil nama file utama dari hasil deteksi atau upload sumber.
     private function fileName(): string
     {
         return $this->detectionResult->file_name
@@ -63,6 +67,7 @@ class DetectionCompletedMail extends Mailable
             ?: '-';
     }
 
+    // Format waktu proses untuk isi email.
     private function processedAt(): string
     {
         $processedAt = $this->detectionResult->processed_at ?? $this->detectionResult->created_at;
@@ -72,6 +77,7 @@ class DetectionCompletedMail extends Mailable
             : '-';
     }
 
+    // Format durasi proses deteksi menjadi menit dan detik.
     private function formattedDuration(): string
     {
         if ($this->durationSeconds === null) {
@@ -89,6 +95,7 @@ class DetectionCompletedMail extends Mailable
         return $remainingSeconds.' detik';
     }
 
+    // Tentukan status inspeksi dari jumlah malware yang ditemukan.
     private function inspectionStatus(): string
     {
         $malware = (int) ($this->summary['malware'] ?? $this->detectionResult->malware_count ?? 0);
@@ -96,6 +103,7 @@ class DetectionCompletedMail extends Mailable
         return $malware > 0 ? 'Malware terdeteksi' : 'Tidak ditemukan malware';
     }
 
+    // Ambil nama petugas dari relasi hasil deteksi atau upload.
     private function petugasName(): string
     {
         return $this->detectionResult->user?->name
@@ -103,6 +111,7 @@ class DetectionCompletedMail extends Mailable
             ?: '-';
     }
 
+    // Ambil email petugas dari relasi hasil deteksi atau upload.
     private function petugasEmail(): string
     {
         return $this->detectionResult->user?->email

@@ -1,4 +1,5 @@
 @php
+    // Ambil pesan flash session untuk toast global.
     $toastMessage = session('toast_message') ?? session('status');
     $toastTitle = session('toast_title') ?? 'Berhasil';
     $toastType = session('toast_type') ?? 'success';
@@ -8,6 +9,7 @@
     <div
         x-data="{ show: true, progress: 100 }"
         x-init="
+            // Jalankan progress bar sampai toast otomatis tertutup.
             const duration = 4200;
             const startedAt = Date.now();
             const timer = setInterval(() => {

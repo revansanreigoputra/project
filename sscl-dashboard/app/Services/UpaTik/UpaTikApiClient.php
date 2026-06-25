@@ -10,11 +10,13 @@ use Throwable;
 
 class UpaTikApiClient
 {
+    // Cek apakah integrasi API UPA-TIK sedang diaktifkan lewat config.
     public function isEnabled(): bool
     {
         return (bool) config('services.upa_tik.enabled', false);
     }
 
+    // Ambil data trafik dari API UPA-TIK dan ubah response jadi bentuk yang konsisten.
     public function fetchTraffic(): array
     {
         if (! $this->isEnabled()) {
@@ -116,6 +118,7 @@ class UpaTikApiClient
         ];
     }
 
+    // Cari env penting yang belum diisi untuk koneksi API UPA-TIK.
     private function missingConfiguration(): array
     {
         return collect([
@@ -129,6 +132,7 @@ class UpaTikApiClient
             ->all();
     }
 
+    // Gabungkan base URL dan endpoint API tanpa slash ganda.
     private function url(): string
     {
         return rtrim((string) config('services.upa_tik.base_url'), '/')
@@ -136,6 +140,7 @@ class UpaTikApiClient
             .ltrim((string) config('services.upa_tik.endpoint'), '/');
     }
 
+    // Ambil nama file dari header response, fallback ke nama default kalau tidak ada.
     private function fileNameFromResponse(?string $contentDisposition): string
     {
         if ($contentDisposition && preg_match('/filename="?([^";]+)"?/i', $contentDisposition, $matches)) {

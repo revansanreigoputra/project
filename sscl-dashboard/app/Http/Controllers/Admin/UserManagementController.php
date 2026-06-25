@@ -13,6 +13,7 @@ use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
 {
+    // Tampilkan daftar user admin dengan filter pencarian, role, dan jumlah per halaman.
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -53,11 +54,13 @@ class UserManagementController extends Controller
         ]);
     }
 
+    // Tampilkan form tambah user beserta daftar role dan permission.
     public function create()
     {
         return view('pages.admin.users.create', $this->formData());
     }
 
+    // Validasi input lalu buat user baru beserta role dan permission-nya.
     public function store(Request $request)
     {
         $validated = $this->validatedUser($request);
@@ -78,6 +81,7 @@ class UserManagementController extends Controller
             ->with('toast_message', 'Akun '.$user->name.' berhasil dibuat beserta hak aksesnya.');
     }
 
+    // Tampilkan form edit user dengan role dan permission yang sudah dimiliki.
     public function edit(User $user)
     {
         return view('pages.admin.users.edit', [
@@ -86,6 +90,7 @@ class UserManagementController extends Controller
         ]);
     }
 
+    // Update data user dan jaga agar admin tidak mencabut role Admin dari dirinya sendiri.
     public function update(Request $request, User $user)
     {
         $validated = $this->validatedUser($request, $user);
@@ -117,6 +122,7 @@ class UserManagementController extends Controller
             ->with('toast_message', 'Hak akses '.$user->name.' berhasil diperbarui.');
     }
 
+    // Hapus user lain, tapi cegah admin menghapus akun yang sedang dipakai.
     public function destroy(Request $request, User $user)
     {
         if ($user->is($request->user())) {
@@ -136,6 +142,7 @@ class UserManagementController extends Controller
             ->with('toast_message', 'Akun '.$name.' berhasil dihapus.');
     }
 
+    // Kumpulkan aturan validasi user untuk proses tambah dan edit.
     private function validatedUser(Request $request, ?User $user = null): array
     {
         return $request->validate([
@@ -162,6 +169,7 @@ class UserManagementController extends Controller
         ]);
     }
 
+    // Siapkan data pilihan role dan permission untuk form user.
     private function formData(): array
     {
         $permissions = Permission::query()->orderBy('name')->get();

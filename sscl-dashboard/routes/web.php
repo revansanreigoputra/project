@@ -19,13 +19,16 @@ use Illuminate\Support\Facades\Route;
 // use App\Http\Controllers\DatasetController;
 // use App\Http\Controllers\SettingController;
 
+// Route awal: user login diarahkan ke halaman sesuai role, guest masuk ke form login.
 Route::get('/', function (Request $request) {
     return $request->user()
         ? redirect()->route(AccessRedirect::routeFor($request->user()))
         : view('auth.login');
 })->name('home');
 
+// Semua halaman utama aplikasi wajib login dulu.
 Route::middleware('auth')->group(function () {
+    // Route operasional untuk Petugas: dashboard, scan, hasil deteksi, riwayat, laporan, dan backup.
     Route::middleware('role:Petugas')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'index'])
             ->middleware('permission:dashboard.view')
@@ -77,6 +80,7 @@ Route::middleware('auth')->group(function () {
             ->name('backup.download');
     });
 
+    // Route admin buat kelola user, role, dan permission sistem.
     Route::prefix('admin')->name('admin.')->middleware('role:Admin')->group(function () {
         Route::resource('users', UserManagementController::class)
             ->middleware('permission:users.manage')
@@ -89,6 +93,7 @@ Route::middleware('auth')->group(function () {
             ->except(['show']);
     });
 
+    // Route profile dipakai semua user yang sudah login.
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -98,6 +103,7 @@ Route::middleware('auth')->group(function () {
     // Route::resource('settings', SettingController::class)->only(['index']);
 });
 
+// Pisahkan route autentikasi supaya web.php tetap fokus ke fitur utama.
 require __DIR__.'/auth.php';
 
 // use Illuminate\Support\Facades\Route;

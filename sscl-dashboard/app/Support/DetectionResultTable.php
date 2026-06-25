@@ -10,10 +10,12 @@ use Illuminate\Support\Str;
 
 class DetectionResultTable
 {
+    // Pilihan pagination, sorting, dan arah sort yang boleh dipakai tabel hasil deteksi.
     public const PER_PAGE_OPTIONS = [10, 25, 50, 100];
     public const SORT_OPTIONS = ['row', 'label', 'confidence'];
     public const DIRECTION_OPTIONS = ['asc', 'desc'];
 
+    // Ambil baris hasil deteksi dari CSV tersimpan, fallback ke kolom JSON lama.
     public static function rows(DetectionResult $detectionResult): Collection
     {
         if ($detectionResult->results_path && Storage::exists($detectionResult->results_path)) {
@@ -25,6 +27,7 @@ class DetectionResultTable
             ->values();
     }
 
+    // Hitung ringkasan hasil dari baris lengkap, atau pakai summary tersimpan kalau data belum penuh.
     public static function summary(DetectionResult $detectionResult, ?Collection $rows = null): array
     {
         $baseSummary = $detectionResult->toPredictionArray()['summary'] ?? [];
@@ -74,6 +77,7 @@ class DetectionResultTable
         ];
     }
 
+    // Buat data tabel siap tampil: rows, summary, paginator, dan opsi label.
     public static function make(DetectionResult $detectionResult, array $filters, string $pageName = 'page'): array
     {
         $rows = self::rows($detectionResult);
@@ -105,6 +109,7 @@ class DetectionResultTable
         ];
     }
 
+    // Normalisasi pilihan per halaman supaya hanya menerima opsi yang disediakan.
     public static function perPage($value): int
     {
         $perPage = (int) $value;
@@ -112,6 +117,7 @@ class DetectionResultTable
         return in_array($perPage, self::PER_PAGE_OPTIONS, true) ? $perPage : 10;
     }
 
+    // Baca CSV hasil deteksi dan ubah setiap baris menjadi struktur yang sama dengan JSON.
     private static function rowsFromStoredCsv(DetectionResult $detectionResult): Collection
     {
         $contents = Storage::get($detectionResult->results_path);
@@ -176,6 +182,7 @@ class DetectionResultTable
         return $rows->values();
     }
 
+    // Normalisasi baris lama yang masih disimpan di kolom JSON.
     private static function normalizeStoredRow(array $row, int $index): array
     {
         $confidence = (float) ($row['confidence'] ?? 0);
@@ -191,6 +198,7 @@ class DetectionResultTable
         ];
     }
 
+    // Terapkan filter label dan pencarian ke baris hasil deteksi.
     private static function filterRows(Collection $rows, array $filters): Collection
     {
         $search = Str::lower(trim((string) ($filters['search'] ?? '')));
@@ -217,6 +225,7 @@ class DetectionResultTable
             ->values();
     }
 
+    // Urutkan baris hasil deteksi sesuai kolom dan arah sort dari request.
     private static function sortRows(Collection $rows, array $filters): Collection
     {
         $sort = self::sort($filters['sort'] ?? null);
@@ -235,6 +244,7 @@ class DetectionResultTable
             ->values();
     }
 
+    // Normalisasi kolom sort agar fallback ke row kalau input tidak valid.
     public static function sort($value): string
     {
         $sort = (string) $value;
@@ -242,6 +252,7 @@ class DetectionResultTable
         return in_array($sort, self::SORT_OPTIONS, true) ? $sort : 'row';
     }
 
+    // Normalisasi arah sort agar fallback ke ascending kalau input tidak valid.
     public static function direction($value): string
     {
         $direction = (string) $value;
@@ -249,6 +260,7 @@ class DetectionResultTable
         return in_array($direction, self::DIRECTION_OPTIONS, true) ? $direction : 'asc';
     }
 
+    // Ambil nilai pembanding yang sesuai dengan kolom sort.
     private static function sortValue(array $row, string $sort): float|string|int
     {
         return match ($sort) {
@@ -258,6 +270,7 @@ class DetectionResultTable
         };
     }
 
+    // Rapikan summary tersimpan supaya field lama dan field baru tetap konsisten.
     private static function normalizeSummaryArray(array $summary, DetectionResult $detectionResult, int $total): array
     {
         $normalLabel = self::normalLabel($summary);
@@ -293,11 +306,13 @@ class DetectionResultTable
         ];
     }
 
+    // Ambil label normal dari summary, fallback ke "Normal".
     private static function normalLabel(array $summary): string
     {
         return (string) ($summary['normal_label'] ?? 'Normal');
     }
 
+    // Ubah nilai string dari CSV menjadi boolean.
     private static function truthy($value): bool
     {
         if (is_bool($value)) {
@@ -307,6 +322,7 @@ class DetectionResultTable
         return in_array(strtolower(trim((string) $value)), ['1', 'true', 'yes', 'y'], true);
     }
 
+    // Buat lookup slug label supaya kolom probabilitas CSV bisa balik ke nama label asli.
     private static function labelLookup(DetectionResult $detectionResult): array
     {
         return collect($detectionResult->summary['labels'] ?? [])
@@ -319,11 +335,13 @@ class DetectionResultTable
             ->all();
     }
 
+    // Bersihkan header CSV dari BOM dan spasi ekstra.
     private static function cleanHeader(string $header): string
     {
         return trim(str_replace("\xEF\xBB\xBF", '', $header));
     }
 
+    // Ubah persen dari CSV menjadi desimal yang dipakai aplikasi.
     private static function percentToDecimal($value): float
     {
         $normalized = trim(str_replace('%', '', (string) $value));
@@ -335,6 +353,7 @@ class DetectionResultTable
         return ((float) $normalized) / 100;
     }
 
+    // Buat label manusiawi dari slug probabilitas kalau label asli tidak ditemukan.
     private static function labelFromSlug(string $slug): string
     {
         return Str::of($slug)

@@ -1,6 +1,7 @@
 @props(['permissionGroups', 'selectedPermissions' => []])
 
 @php
+  // Gabungkan pilihan lama dari validasi gagal dengan permission yang sudah tersimpan.
   $selected = collect(old('permissions', $selectedPermissions instanceof \Illuminate\Support\Collection ? $selectedPermissions->all() : $selectedPermissions));
 @endphp
 

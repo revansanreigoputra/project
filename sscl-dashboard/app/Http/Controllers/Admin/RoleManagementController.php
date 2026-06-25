@@ -12,6 +12,7 @@ use Spatie\Permission\PermissionRegistrar;
 
 class RoleManagementController extends Controller
 {
+    // Tampilkan daftar role beserta filter pencarian dan jumlah user/permission.
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -42,11 +43,13 @@ class RoleManagementController extends Controller
         ]);
     }
 
+    // Tampilkan form tambah role dengan daftar permission.
     public function create()
     {
         return view('pages.admin.roles.create', $this->formData());
     }
 
+    // Buat role baru lalu sinkronkan permission yang dipilih.
     public function store(Request $request)
     {
         $validated = $this->validatedRole($request);
@@ -65,6 +68,7 @@ class RoleManagementController extends Controller
             ->with('toast_message', 'Role '.$role->name.' berhasil dibuat.');
     }
 
+    // Tampilkan form edit role dan tandai role sistem yang namanya dilindungi.
     public function edit(Role $role)
     {
         return view('pages.admin.roles.edit', [
@@ -74,6 +78,7 @@ class RoleManagementController extends Controller
         ]);
     }
 
+    // Update role, tapi nama role sistem tetap dikunci supaya route tidak rusak.
     public function update(Request $request, Role $role)
     {
         $validated = $this->validatedRole($request, $role);
@@ -93,6 +98,7 @@ class RoleManagementController extends Controller
             ->with('toast_message', 'Hak akses role '.$oldName.' berhasil diperbarui.');
     }
 
+    // Hapus role custom dan lindungi role bawaan aplikasi.
     public function destroy(Role $role)
     {
         if (in_array($role->name, $this->systemRoles(), true)) {
@@ -113,6 +119,7 @@ class RoleManagementController extends Controller
             ->with('toast_message', 'Role '.$name.' berhasil dihapus.');
     }
 
+    // Validasi nama role dan daftar permission yang boleh dipasang.
     private function validatedRole(Request $request, ?Role $role = null): array
     {
         return $request->validate([
@@ -132,6 +139,7 @@ class RoleManagementController extends Controller
         ]);
     }
 
+    // Siapkan permission yang dikelompokkan berdasarkan modul untuk form role.
     private function formData(): array
     {
         $permissions = Permission::query()->orderBy('name')->get();
@@ -141,6 +149,7 @@ class RoleManagementController extends Controller
         ];
     }
 
+    // Daftar role bawaan yang tidak boleh dihapus atau diganti namanya.
     private function systemRoles(): array
     {
         return [

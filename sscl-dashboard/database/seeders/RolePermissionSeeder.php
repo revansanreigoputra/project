@@ -11,10 +11,12 @@ use Spatie\Permission\PermissionRegistrar;
 
 class RolePermissionSeeder extends Seeder
 {
+    // Role bawaan yang dipakai untuk membagi akses admin dan petugas.
     public const ADMIN_ROLE = 'Admin';
 
     public const PETUGAS_ROLE = 'Petugas';
 
+    // Daftar permission yang dipakai route dan fitur utama aplikasi.
     public const PERMISSIONS = [
         'dashboard.view',
         'dashboard.view-all',
@@ -32,12 +34,14 @@ class RolePermissionSeeder extends Seeder
         'database.backup',
     ];
 
+    // Permission khusus admin untuk kelola user, role, dan permission.
     public const ADMIN_PERMISSIONS = [
         'users.manage',
         'roles.manage',
         'permissions.manage',
     ];
 
+    // Permission petugas untuk operasional scan, riwayat, laporan, dan backup.
     public const PETUGAS_PERMISSIONS = [
         'dashboard.view',
         'dashboard.view-all',
@@ -52,6 +56,7 @@ class RolePermissionSeeder extends Seeder
         'database.backup',
     ];
 
+    // Seed role, permission, dan akun default supaya aplikasi langsung bisa dipakai.
     public function run(): void
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();

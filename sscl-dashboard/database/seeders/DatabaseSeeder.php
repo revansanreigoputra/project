@@ -9,9 +9,7 @@ class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
+    // Jalankan seeder role dan permission sebagai data awal aplikasi.
     public function run(): void
     {
         $this->call(RolePermissionSeeder::class);

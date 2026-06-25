@@ -35,17 +35,20 @@ return [
         ],
     ],
 
+    // Config koneksi ke Flask ML API untuk proses prediksi file trafik.
     'ml_api' => [
         'url' => env('ML_API_URL', 'http://127.0.0.1:5001'),
         'key' => env('ML_API_KEY', 'dev-secret-key'),
         'timeout' => env('ML_API_TIMEOUT', 120),
     ],
 
+    // Config notifikasi setelah proses scan selesai.
     'scan_notifications' => [
         'admin_email' => env('SCAN_NOTIFICATION_ADMIN_EMAIL'),
         'send_to_user' => env('SCAN_NOTIFICATION_SEND_TO_USER', true),
     ],
 
+    // Config integrasi API UPA-TIK untuk ambil dataset trafik otomatis.
     'upa_tik' => [
         'enabled' => env('UPA_TIK_API_ENABLED', false),
         'base_url' => env('UPA_TIK_API_BASE_URL'),
@@ -56,6 +59,7 @@ return [
         'source_name' => 'UPA-TIK',
     ],
 
+    // Config sinkronisasi CSV dari dan ke VPS.
     'vps_csv' => [
         'enabled' => env('VPS_CSV_ENABLED', false),
         'source_disk' => env('VPS_CSV_SOURCE_DISK', 'vps_dataset'),

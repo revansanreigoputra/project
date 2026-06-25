@@ -10,9 +10,7 @@ use Illuminate\View\View;
 
 class EmailVerificationPromptController extends Controller
 {
-    /**
-     * Display the email verification prompt.
-     */
+    // Tampilkan halaman verifikasi email, atau langsung redirect kalau sudah terverifikasi.
     public function __invoke(Request $request): RedirectResponse|View
     {
         return $request->user()->hasVerifiedEmail()

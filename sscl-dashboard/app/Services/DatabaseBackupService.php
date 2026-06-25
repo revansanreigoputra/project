@@ -17,6 +17,7 @@ use ZipArchive;
 
 class DatabaseBackupService
 {
+    // Buat backup database manual atau terjadwal dalam format SQL atau ZIP.
     public function create(string $format = 'sql', ?User $user = null, string $trigger = 'manual'): DatabaseBackup
     {
         if (! in_array($format, DatabaseBackupSetting::FORMATS, true)) {
@@ -81,6 +82,7 @@ class DatabaseBackupService
         }
     }
 
+    // Hapus file backup lama sesuai aturan retensi hari.
     public function pruneOldBackups(int $retentionDays): int
     {
         $cutoff = now()->subDays(max(1, $retentionDays));
@@ -97,6 +99,7 @@ class DatabaseBackupService
         return $backups->count();
     }
 
+    // Dump database aktif ke file SQL sesuai driver koneksi.
     private function dumpToSql(Connection $connection, string $path): void
     {
         $absolutePath = Storage::disk('local')->path($path);
@@ -123,6 +126,7 @@ class DatabaseBackupService
         }
     }
 
+    // Tulis struktur dan isi tabel MySQL/MariaDB ke file SQL.
     private function dumpMysql(Connection $connection, $handle): void
     {
         $pdo = $connection->getPdo();
@@ -148,6 +152,7 @@ class DatabaseBackupService
         $this->write($handle, 'SET FOREIGN_KEY_CHECKS=1;');
     }
 
+    // Tulis struktur dan isi tabel SQLite ke file SQL.
     private function dumpSqlite(Connection $connection, $handle): void
     {
         $pdo = $connection->getPdo();
@@ -176,6 +181,7 @@ class DatabaseBackupService
         $this->write($handle, 'PRAGMA foreign_keys=ON;');
     }
 
+    // Ambil daftar tabel utama MySQL, tanpa view.
     private function mysqlTables(Connection $connection): array
     {
         return collect($connection->select('SHOW FULL TABLES'))
@@ -194,6 +200,7 @@ class DatabaseBackupService
             ->all();
     }
 
+    // Tulis semua baris tabel sebagai statement INSERT.
     private function writeRows(PDO $pdo, $handle, string $table, string $driver): void
     {
         $quotedTable = $this->quoteIdentifier($table, $driver);
@@ -218,6 +225,7 @@ class DatabaseBackupService
         }
     }
 
+    // Bungkus dump SQL ke ZIP lalu hapus file SQL sementara.
     private function zipSqlDump(string $sqlPath, string $zipPath): void
     {
         if (! class_exists(ZipArchive::class)) {
@@ -237,6 +245,7 @@ class DatabaseBackupService
         Storage::disk('local')->delete($sqlPath);
     }
 
+    // Quote nama tabel atau kolom sesuai gaya driver database.
     private function quoteIdentifier(string $identifier, string $driver): string
     {
         if (in_array($driver, ['mysql', 'mariadb'], true)) {
@@ -246,6 +255,7 @@ class DatabaseBackupService
         return '"'.str_replace('"', '""', $identifier).'"';
     }
 
+    // Quote nilai data supaya aman ditulis ke statement SQL.
     private function quoteValue(PDO $pdo, $value): string
     {
         if ($value === null) {
@@ -263,6 +273,7 @@ class DatabaseBackupService
         return $pdo->quote((string) $value);
     }
 
+    // Tulis satu baris ke file backup SQL.
     private function write($handle, string $line): void
     {
         fwrite($handle, $line.PHP_EOL);

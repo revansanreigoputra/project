@@ -4,6 +4,7 @@
 @section('page')
   <div 
     class="space-y-6"
+    {{-- State Alpine untuk modal hapus permission. --}}
     x-data="{
       deleteModalOpen: false,
       deleteFormAction: '',
@@ -79,6 +80,7 @@
           <tbody class="divide-y divide-app">
             @forelse ($permissions as $permission)
               @php
+                // Tandai permission bawaan dan ambil nama modul dari prefix permission.
                 $isSystemPermission = in_array($permission->name, $systemPermissions, true);
                 $module = str($permission->name)->before('.')->headline();
               @endphp

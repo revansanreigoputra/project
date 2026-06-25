@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 
 class DetectionResultController extends Controller
 {
+    // Tampilkan hasil deteksi terbaru beserta filter tabel dan ringkasan riwayat.
     public function index(Request $request)
     {
         $filters = $request->validate([
@@ -84,6 +85,7 @@ class DetectionResultController extends Controller
         ]);
     }
 
+    // Tampilkan detail satu hasil deteksi lengkap dengan pagination tabel prediksi.
     public function show(Request $request, DetectionResult $detectionResult)
     {
         $filters = $request->validate([
@@ -124,6 +126,7 @@ class DetectionResultController extends Controller
         ]);
     }
 
+    // Bentuk data ringkas untuk daftar hasil deteksi terbaru.
     private function detectionSummary(DetectionResult $result): array
     {
         $summary = DetectionResultTable::summary($result);
@@ -151,6 +154,7 @@ class DetectionResultController extends Controller
         ];
     }
 
+    // Format tanggal ke WIB untuk tampilan hasil deteksi.
     private function formatDateTime($dateTime): string
     {
         return $dateTime

@@ -1,4 +1,5 @@
 @php
+  // Susun menu sidebar berdasarkan permission user yang sedang login.
   $user = auth()->user();
   $items = collect([
     ['href' => route('dashboard'), 'active' => request()->routeIs('dashboard'), 'label' => 'Dashboard', 'icon' => 'layout-dashboard', 'can' => ['dashboard.view']],

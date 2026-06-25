@@ -14,7 +14,7 @@ class User extends Authenticatable
     use HasFactory, HasRoles, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
+     * Kolom user yang boleh diisi massal dari form.
      *
      * @var list<string>
      */
@@ -25,7 +25,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
+     * Kolom sensitif yang tidak boleh ikut keluar saat model diserialisasi.
      *
      * @var list<string>
      */
@@ -35,7 +35,7 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the attributes that should be cast.
+     * Casting atribut user supaya tanggal dan password diproses otomatis.
      *
      * @return array<string, string>
      */

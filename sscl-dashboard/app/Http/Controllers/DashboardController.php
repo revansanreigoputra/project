@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    // Tampilkan dashboard sesuai akses user, lengkap dengan statistik dan aktivitas terbaru.
     public function index(Request $request)
     {
         $user = $request->user();
@@ -175,6 +176,7 @@ class DashboardController extends Controller
         ]);
     }
 
+    // Rapikan satu hasil deteksi jadi data ringkas untuk kartu dan daftar dashboard.
     private function detectionDetail(DetectionResult $result): array
     {
         $summary = DetectionResultTable::summary($result);
@@ -201,6 +203,7 @@ class DashboardController extends Controller
         ];
     }
 
+    // Susun tren deteksi 6 bulan terakhir untuk grafik dashboard.
     private function monthlyTrend($completedResults): array
     {
         $months = collect(range(5, 0))
@@ -227,6 +230,7 @@ class DashboardController extends Controller
             ->all();
     }
 
+    // Hitung label prediksi terbanyak supaya distribusi malware/normal mudah dibaca.
     private function labelStats($completedResults): array
     {
         $labels = [];
@@ -266,6 +270,7 @@ class DashboardController extends Controller
             ->all();
     }
 
+    // Ubah status upload teknis jadi teks yang ramah buat tampilan.
     private function displayUploadStatus(?string $status): string
     {
         return match ($status) {
@@ -277,6 +282,7 @@ class DashboardController extends Controller
         };
     }
 
+    // Format waktu ke zona WIB agar konsisten di dashboard.
     private function formatDateTime($dateTime): string
     {
         return $dateTime

@@ -1,6 +1,7 @@
 @props(['roles', 'selectedRoles' => []])
 
 @php
+  // Gabungkan pilihan lama dari validasi gagal dengan role yang sudah tersimpan.
   $selected = collect(old('roles', $selectedRoles instanceof \Illuminate\Support\Collection ? $selectedRoles->all() : $selectedRoles));
 @endphp
 

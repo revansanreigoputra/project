@@ -30,6 +30,7 @@ return [
 
     'disks' => [
 
+        // Disk SFTP buat membaca dataset CSV mentah dari VPS sumber.
         'vps_dataset' => [
             'driver' => 'sftp',
             'host' => env('VPS_HOST'),
@@ -50,6 +51,7 @@ return [
             'throw' => true,
         ],
 
+        // Disk SFTP buat menyimpan upload dan hasil deteksi ke VPS target.
         'vps_csv' => [
             'driver' => 'sftp',
             'host' => env('VPS_HOST'),

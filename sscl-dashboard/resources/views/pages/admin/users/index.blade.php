@@ -3,12 +3,14 @@
 
 @section('page')
   @php
+    // Hitung ringkasan user dan ambil beberapa role untuk badge atas.
     $totalUsers = $users->total();
     $roleBadges = $roles->map(fn ($role) => $role->name)->take(4);
   @endphp
 
   <div
     class="space-y-6"
+    {{-- State Alpine untuk modal hapus pengguna. --}}
     x-data="{
       deleteModalOpen: false,
       deleteFormAction: '',

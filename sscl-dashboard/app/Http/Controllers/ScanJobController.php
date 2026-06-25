@@ -12,9 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 class ScanJobController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    // Tampilkan halaman upload scan sekaligus hasil prediksi terakhir yang bisa dilihat user.
     public function index()
     {
         return view('pages.scan.index', [
@@ -22,9 +20,7 @@ class ScanJobController extends Controller
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Simpan file upload dulu lewat AJAX supaya user dapat status sebelum proses deteksi.
     public function upload(Request $request, TrafficDetectionService $trafficDetectionService): JsonResponse
     {
         $validated = $request->validate([
@@ -44,9 +40,7 @@ class ScanJobController extends Controller
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    // Validasi input lalu jalankan deteksi dari file baru atau upload yang sudah tersimpan.
     public function store(Request $request, TrafficDetectionService $trafficDetectionService)
     {
         $validated = $request->validate([
@@ -66,6 +60,7 @@ class ScanJobController extends Controller
         return redirect()->route('scan.index');
     }
 
+    // Ambil prediksi selesai terbaru untuk ditampilkan ulang di halaman scan.
     private function latestPredictionFor(Request $request): ?array
     {
         $detectionResult = DetectionResult::with('scanUpload')
@@ -83,6 +78,7 @@ class ScanJobController extends Controller
         return $prediction;
     }
 
+    // Tentukan file yang dipakai: upload lama milik user atau file baru dari form.
     private function resolveUpload(
         Request $request,
         array $validated,

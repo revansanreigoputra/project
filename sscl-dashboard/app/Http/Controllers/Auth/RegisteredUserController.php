@@ -16,16 +16,14 @@ use Spatie\Permission\Models\Role;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
+    // Tampilkan halaman registrasi akun baru.
     public function create(): View
     {
         return view('auth.register');
     }
 
     /**
-     * Handle an incoming registration request.
+     * Validasi registrasi, buat akun, lalu beri role Petugas kalau tersedia.
      *
      * @throws \Illuminate\Validation\ValidationException
      */

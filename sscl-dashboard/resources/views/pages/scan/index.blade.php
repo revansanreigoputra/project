@@ -3,6 +3,7 @@
 
 @section('page')
     @php
+        // Siapkan data hasil prediksi terakhir untuk ringkasan, filter, dan tabel preview.
         $currentPrediction = $prediction ?? null;
         $summary = $currentPrediction['summary'] ?? [];
         $normalLabel = $summary['normal_label'] ?? 'Normal';
@@ -92,6 +93,7 @@
 
     <div
         class="rounded-3xl bg-surface shadow-soft p-6"
+        {{-- Config Alpine untuk upload file dan tabel hasil prediksi di halaman scan. --}}
         x-data="scanUploadPage({
             uploadUrl: @js(route('scan.upload')),
             csrfToken: @js(csrf_token()),
@@ -201,6 +203,7 @@
 
         @isset($prediction)
             @php
+                // Refresh ringkasan saat hasil prediksi tersedia di halaman.
                 $summary = $prediction['summary'] ?? [];
                 $normalLabel = $summary['normal_label'] ?? 'Normal';
                 $labelOptions = collect($summary['labels'] ?? [])->keys()->whenEmpty(fn ($items) => collect([$normalLabel]));

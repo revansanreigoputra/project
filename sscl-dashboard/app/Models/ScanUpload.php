@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ScanUpload extends Model
 {
+    // Kolom upload yang boleh diisi dari service penyimpanan file.
     protected $fillable = [
         'user_id',
         'original_name',
@@ -23,6 +24,7 @@ class ScanUpload extends Model
         'external_reference',
     ];
 
+    // Casting ukuran file supaya selalu terbaca sebagai integer.
     protected function casts(): array
     {
         return [
@@ -30,6 +32,7 @@ class ScanUpload extends Model
         ];
     }
 
+    // Label sumber upload untuk tampilan user.
     public function sourceLabel(): string
     {
         if ($this->source === 'api') {
@@ -39,16 +42,19 @@ class ScanUpload extends Model
         return 'Manual';
     }
 
+    // Relasi ke user pemilik upload.
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    // Relasi ke semua hasil deteksi dari upload ini.
     public function detectionResults(): HasMany
     {
         return $this->hasMany(DetectionResult::class);
     }
 
+    // Scope upload milik user tertentu.
     public function scopeForUser(Builder $query, $user): Builder
     {
         return $user
@@ -56,6 +62,7 @@ class ScanUpload extends Model
             : $query->whereNull('user_id');
     }
 
+    // Scope visibilitas: user biasa hanya lihat data sendiri, admin akses tertentu bisa lihat semua.
     public function scopeVisibleTo(Builder $query, $user): Builder
     {
         if ($user && $user->can('history.view-any')) {
