@@ -130,9 +130,7 @@ Artisan::command(
                     $externalReference,
                     $fileSourceName
                 );
-                $trafficDetectionService->detect($upload, $systemUserId, [
-                    'send_email' => false,
-                ]);
+                $trafficDetectionService->detect($upload, $systemUserId);
                 $this->info('File UPA-TIK diproses: '.$externalReference);
 
                 return 0;
@@ -187,9 +185,7 @@ Artisan::command(
                     $externalReference,
                     $datasetSourceName
                 );
-                $trafficDetectionService->detect($upload, $systemUser?->id, [
-                    'send_email' => false,
-                ]);
+                $trafficDetectionService->detect($upload, $systemUser?->id);
                 $processed++;
                 $this->info('Data UPA-TIK diproses: '.$externalReference);
             } catch (ValidationException $exception) {

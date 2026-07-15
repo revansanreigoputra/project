@@ -142,7 +142,7 @@ class DatabaseBackupController extends Controller
         ];
     }
 
-    // Format ukuran file backup jadi B, KB, MB, dan seterusnya.
+    // Format ukuran file backup.
     private function formatBytes(int|float $bytes): string
     {
         $bytes = max(0, (float) $bytes);

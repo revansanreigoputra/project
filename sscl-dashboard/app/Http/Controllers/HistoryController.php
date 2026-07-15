@@ -42,7 +42,7 @@ class HistoryController extends Controller
             ? (int) ($filters['per_page'] ?? 10)
             : 10;
 
-        // Query ini menjadi sumber tunggal untuk tabel, ringkasan, dan pagination riwayat.
+        // Query ini untuk tabel, ringkasan, dan pagination riwayat.
         $query = ScanUpload::with([
             'detectionResults' => fn ($query) => $query
                 ->latest('processed_at')

@@ -90,7 +90,7 @@
     @endphp
 
     <div
-        class="space-y-6"
+        class="space-y-4 md:space-y-6"
         {{-- State Alpine untuk modal detail dan pagination riwayat terbaru. --}}
         x-data="{
             rowDetailOpen: false,
@@ -129,8 +129,8 @@
             },
         }"
     >
-        <section class="overflow-hidden rounded-3xl border border-app bg-surface shadow-soft">
-            <div class="relative p-6 md:p-7">
+        <section class="overflow-hidden rounded-2xl border border-app bg-surface shadow-soft md:rounded-3xl">
+            <div class="relative p-4 md:p-7">
                 <div class="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,var(--primary),var(--accent),var(--danger))]"></div>
                 <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                     <div class="min-w-0">
@@ -138,8 +138,8 @@
                             <x-lucide-list-checks class="h-3.5 w-3.5" />
                             Hasil terakhir dan riwayat terbaru
                         </div>
-                        <h1 class="mt-4 break-words text-2xl font-semibold leading-tight md:text-3xl">{{ $latestFile }}</h1>
-                        <div class="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted">
+                        <h1 class="mt-3 break-words text-xl font-semibold leading-tight md:mt-4 md:text-3xl">{{ $latestFile }}</h1>
+                        <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted md:text-sm">
                             <span class="rounded-full bg-surface2 px-3 py-1 text-xs font-semibold text-app">{{ $latestSourceLabel }}</span>
                             <span>Diproses {{ $latestProcessedAt }}</span>
                             <span class="hidden sm:inline">|</span>
@@ -153,7 +153,7 @@
                         @if ($latestDownloadUrl && auth()->user()?->can('reports.download'))
                             <a
                                 href="{{ $latestDownloadUrl }}"
-                                class="inline-flex items-center gap-2 rounded-2xl border border-app px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-surface2"
+                                class="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-app px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-surface2 sm:w-auto"
                             >
                                 <x-lucide-download class="h-4 w-4" />
                                 Unduh CSV
@@ -169,31 +169,31 @@
             </div>
         </section>
 
-        <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section class="grid grid-cols-2 gap-3 md:grid-cols-2 md:gap-4 xl:grid-cols-4">
             @foreach ($latestCards as $card)
-                <div class="group rounded-3xl border border-app bg-surface p-5 shadow-soft transition-transform duration-200 hover:-translate-y-1">
+                <div class="group rounded-2xl border border-app bg-surface p-4 shadow-soft transition-transform duration-200 hover:-translate-y-1 md:rounded-3xl md:p-5">
                     <div
                         @class([
-                            'grid h-12 w-12 place-items-center rounded-2xl',
+                            'grid h-10 w-10 place-items-center rounded-2xl md:h-12 md:w-12',
                             'bg-primary-soft text-primary' => $card['tone'] === 'primary',
                             'bg-[rgba(34,197,94,0.15)] text-[color:var(--accent)]' => $card['tone'] === 'accent',
                             'bg-[rgba(248,113,113,0.15)] text-[color:var(--danger)]' => $card['tone'] === 'danger',
                             'bg-[rgba(56,189,248,0.15)] text-[color:var(--info)]' => $card['tone'] === 'info',
                         ])
                     >
-                        <x-dynamic-component :component="$card['icon']" class="h-6 w-6 transition-transform duration-200 group-hover:scale-110" />
+                        <x-dynamic-component :component="$card['icon']" class="h-5 w-5 transition-transform duration-200 group-hover:scale-110 md:h-6 md:w-6" />
                     </div>
-                    <div class="mt-5">
+                    <div class="mt-4 md:mt-5">
                         <div class="text-xs font-semibold text-muted">{{ $card['label'] }}</div>
-                        <div class="mt-1 break-words text-2xl font-semibold leading-tight">{{ $card['value'] }}</div>
-                        <div class="mt-2 truncate text-xs leading-5 text-muted" title="{{ $card['meta'] }}">{{ $card['meta'] }}</div>
+                        <div class="mt-1 break-words text-lg font-semibold leading-tight sm:text-xl md:text-2xl">{{ $card['value'] }}</div>
+                        <div class="mt-2 line-clamp-2 text-[11px] leading-4 text-muted md:text-xs md:leading-5" title="{{ $card['meta'] }}">{{ $card['meta'] }}</div>
                     </div>
                 </div>
             @endforeach
         </section>
 
         <section class="grid gap-6 xl:grid-cols-12">
-            <div class="rounded-3xl border border-app bg-surface p-6 shadow-soft xl:col-span-7">
+            <div class="rounded-2xl border border-app bg-surface p-4 shadow-soft md:rounded-3xl md:p-6 xl:col-span-7">
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <div class="text-sm font-semibold">Distribusi Hasil Terakhir</div>
@@ -205,7 +205,34 @@
                 </div>
 
                 @if ($labelCounts->isNotEmpty())
-                    <div class="mt-7 flex h-64 items-end gap-3 overflow-x-auto border-b border-app pb-4 md:gap-5">
+                    <div class="mt-5 space-y-4 md:hidden">
+                        @foreach ($labelCounts->sortDesc()->take(8) as $label => $count)
+                            @php
+                                // Di layar kecil, distribusi lebih stabil sebagai progress list.
+                                $tone = $toneForLabel($label);
+                                $width = max(5, round(((int) $count / $maxLabelCount) * 100));
+                            @endphp
+                            <div>
+                                <div class="flex items-center justify-between gap-3 text-xs">
+                                    <span class="min-w-0 truncate font-semibold" title="{{ $label }}">{{ $label }}</span>
+                                    <span class="shrink-0 font-semibold text-muted">{{ $formatNumber($count) }}</span>
+                                </div>
+                                <div class="mt-2 h-2.5 overflow-hidden rounded-full bg-surface2">
+                                    <div
+                                        @class([
+                                            'h-full rounded-full',
+                                            'bg-[color:var(--accent)]' => $tone === 'accent',
+                                            'bg-[color:var(--danger)]' => $tone === 'danger',
+                                            'bg-[color:var(--warning)]' => $tone === 'warning',
+                                        ])
+                                        style="width: {{ $width }}%"
+                                    ></div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="mt-7 hidden h-64 items-end gap-5 overflow-x-auto border-b border-app pb-4 md:flex">
                         @foreach ($labelCounts->sortDesc()->take(8) as $label => $count)
                             @php
                                 // Hitung tone dan tinggi bar grafik per label.
@@ -213,7 +240,7 @@
                                 $height = max(10, round(((int) $count / $maxLabelCount) * 100));
                             @endphp
                             <div class="flex min-w-20 flex-1 flex-col items-center gap-3">
-                                <div class="text-xs font-semibold text-muted">{{ $formatNumber($count) }}</div>
+                                <div class="max-w-20 truncate text-xs font-semibold text-muted">{{ $formatNumber($count) }}</div>
                                 <div class="flex h-44 w-full max-w-24 items-end overflow-hidden rounded-t-2xl bg-surface2">
                                     <div
                                         @class([
@@ -240,7 +267,7 @@
                 @endif
             </div>
 
-            <div class="rounded-3xl border border-app bg-surface p-6 shadow-soft xl:col-span-5">
+            <div class="rounded-2xl border border-app bg-surface p-4 shadow-soft md:rounded-3xl md:p-6 xl:col-span-5">
                 <div class="flex items-center justify-between gap-3">
                     <div>
                         <div class="text-sm font-semibold">Riwayat Terbaru</div>
@@ -292,26 +319,26 @@
                         <button
                             type="button"
                             @click="openDetectionDetail(item)"
-                            class="group w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 ring-app"
+                            class="group w-full overflow-hidden rounded-2xl border border-app bg-surface2 px-4 py-3 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 ring-app"
                         >
                             <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <div class="truncate text-sm font-semibold" :title="item.file_name" x-text="item.file_name"></div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="line-clamp-2 break-words text-sm font-semibold leading-5" :title="item.file_name" x-text="item.file_name"></div>
                                     <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs leading-5 text-muted">
                                         <span class="rounded-full bg-surface px-2 py-0.5 font-semibold text-app" x-text="item.source_label || 'Manual'"></span>
-                                        <span x-text="item.processed_at"></span>
-                                        <span>-</span>
-                                        <span x-text="item.user"></span>
+                                        <span class="min-w-0 break-words" x-text="item.processed_at"></span>
+                                        <span class="hidden sm:inline">-</span>
+                                        <span class="min-w-0 break-words" x-text="item.user"></span>
                                     </div>
                                 </div>
                                 <span
-                                    class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
+                                    class="hidden shrink-0 rounded-full px-3 py-1 text-xs font-semibold sm:inline-flex"
                                     :class="item.malware > 0 ? 'bg-[rgba(248,113,113,0.16)] text-[color:var(--danger)]' : 'bg-[rgba(34,197,94,0.16)] text-[color:var(--accent)]'"
                                     x-text="item.malware > 0 ? 'Malware' : 'Aman'"
                                 >
                                 </span>
                             </div>
-                            <div class="mt-3 grid grid-cols-1 gap-2 text-xs text-muted sm:grid-cols-3">
+                            <div class="mt-3 grid grid-cols-3 gap-2 text-xs text-muted">
                                 <span>Total <span class="font-semibold text-app" x-text="Number(item.total).toLocaleString('id-ID')"></span></span>
                                 <span>{{ $normalLabel }} <span class="font-semibold text-app" x-text="Number(item.normal).toLocaleString('id-ID')"></span></span>
                                 <span>Malware <span class="font-semibold text-app" x-text="Number(item.malware).toLocaleString('id-ID')"></span></span>
@@ -351,7 +378,7 @@
             </div>
         </section>
 
-        <section class="rounded-3xl border border-app bg-surface p-6 shadow-soft">
+        <section class="rounded-2xl border border-app bg-surface p-4 shadow-soft md:rounded-3xl md:p-6">
             <div class="flex flex-col gap-4">
                 <div>
                     <div class="text-sm font-semibold">Tabel Detail Hasil Terakhir</div>
@@ -439,7 +466,105 @@
                 @endif
             </div>
 
-            <div class="mt-5 overflow-auto rounded-3xl border border-app">
+            <div class="mt-5 space-y-3 lg:hidden">
+                @forelse ($results as $result)
+                    @php
+                        // Bentuk data satu baris agar bisa dipakai card mobile dan modal detail.
+                        $label = $result['label'] ?? 'Unknown';
+                        $tone = $toneForLabel($label);
+                        $probabilities = collect($result['probabilities'] ?? []);
+                        $confidencePercent = max(0, min(100, ((float) ($result['confidence'] ?? 0)) * 100));
+                        $normalProbability = max(0, min(100, ((float) ($probabilities[$normalLabel] ?? 0)) * 100));
+                        $labelProbability = max(0, min(100, ((float) ($probabilities[$label] ?? $result['confidence'] ?? 0)) * 100));
+                        $topPrediction = $topProbability($probabilities);
+                        $topPredictionPercent = max(0, min(100, ((float) $topPrediction['value']) * 100));
+                        $rowNumber = $resultsPaginator ? (($resultsPaginator->firstItem() ?? 1) + $loop->index) : $loop->iteration;
+                        $guardrailApplied = (bool) ($result['blocked_guardrail_applied'] ?? false);
+                        $rowPayload = [
+                            'no' => $rowNumber,
+                            'row' => (string) ($result['row'] ?? $loop->index),
+                            'label' => $label,
+                            'status' => $statusForTone($tone),
+                            'recommendation' => $recommendationForTone($tone),
+                            'confidence' => $formatPercent($confidencePercent).'%',
+                            'probNormal' => $formatPercent($normalProbability).'%',
+                            'probLabel' => $formatPercent($labelProbability).'%',
+                            'topLabel' => $topPrediction['label'],
+                            'topProbability' => $formatPercent($topPredictionPercent).'%',
+                            'guardrailApplied' => $guardrailApplied,
+                            'guardrailText' => $guardrailApplied ? 'Deny Guardrail' : '-',
+                            'probabilities' => $probabilities
+                                ->sortDesc()
+                                ->take(4)
+                                ->map(fn ($value, $name) => [
+                                    'label' => $name,
+                                    'value' => $formatPercent(((float) $value) * 100).'%',
+                                ])
+                                ->values()
+                                ->all(),
+                        ];
+                    @endphp
+                    <button
+                        type="button"
+                        @click="openRowDetail(@js($rowPayload))"
+                        class="w-full rounded-2xl border border-app bg-surface2 p-4 text-left focus-visible:outline-none focus-visible:ring-2 ring-app"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="text-xs font-semibold text-muted">Row {{ $rowPayload['row'] }}</div>
+                                <div class="mt-1 flex flex-wrap items-center gap-2">
+                                    <span
+                                        @class([
+                                            'inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold',
+                                            'bg-[rgba(248,113,113,0.18)] text-[color:var(--danger)]' => $tone === 'danger',
+                                            'bg-[rgba(34,197,94,0.18)] text-[color:var(--accent)]' => $tone === 'accent',
+                                            'bg-[rgba(251,191,36,0.18)] text-[color:var(--warning)]' => $tone === 'warning',
+                                        ])
+                                    >
+                                        {{ $label }}
+                                    </span>
+                                    @if ($guardrailApplied)
+                                        <span class="rounded-full bg-[rgba(251,191,36,0.18)] px-3 py-1 text-xs font-semibold text-[color:var(--warning)]">Guardrail</span>
+                                    @endif
+                                </div>
+                            </div>
+                            <span class="shrink-0 text-xs font-semibold text-muted">#{{ $rowNumber }}</span>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                            <div class="rounded-xl border border-app bg-surface px-3 py-2">
+                                <div class="text-muted">Confidence</div>
+                                <div class="mt-1 font-semibold">{{ $formatPercent($confidencePercent) }}%</div>
+                            </div>
+                            <div class="rounded-xl border border-app bg-surface px-3 py-2">
+                                <div class="text-muted">Prob. Prediksi</div>
+                                <div class="mt-1 font-semibold">{{ $formatPercent($labelProbability) }}%</div>
+                            </div>
+                            <div class="rounded-xl border border-app bg-surface px-3 py-2">
+                                <div class="text-muted">Prob. {{ $normalLabel }}</div>
+                                <div class="mt-1 font-semibold">{{ $formatPercent($normalProbability) }}%</div>
+                            </div>
+                            <div class="rounded-xl border border-app bg-surface px-3 py-2">
+                                <div class="text-muted">Status</div>
+                                <div class="mt-1 font-semibold">{{ $rowPayload['status'] }}</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 flex items-center justify-between gap-3 text-xs text-muted">
+                            <span class="truncate">Top: {{ $topPrediction['label'] }} ({{ $formatPercent($topPredictionPercent) }}%)</span>
+                            <span class="font-semibold text-app">Detail</span>
+                        </div>
+                    </button>
+                @empty
+                    <div class="rounded-3xl border border-dashed border-app bg-surface2 px-5 py-8 text-center text-muted">
+                        <x-lucide-file-text class="mx-auto h-10 w-10" />
+                        <div class="mt-3 text-sm font-semibold text-app">Belum ada hasil deteksi</div>
+                        <div class="mt-1 text-xs">Upload data untuk mulai menjalankan deteksi malware.</div>
+                    </div>
+                @endforelse
+            </div>
+
+            <div class="mt-5 hidden overflow-auto rounded-3xl border border-app lg:block">
                 <table class="w-full min-w-[920px] text-sm">
                     <thead class="sticky top-0 z-10 bg-surface2 text-muted">
                         <tr class="border-b border-app">

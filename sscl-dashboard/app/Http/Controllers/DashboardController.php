@@ -176,7 +176,7 @@ class DashboardController extends Controller
         ]);
     }
 
-    // Rapikan satu hasil deteksi jadi data ringkas untuk kartu dan daftar dashboard.
+    // Rapikan satu hasil deteksi jadi data ringkas.
     private function detectionDetail(DetectionResult $result): array
     {
         $summary = DetectionResultTable::summary($result);
@@ -270,7 +270,7 @@ class DashboardController extends Controller
             ->all();
     }
 
-    // Ubah status upload teknis jadi teks yang ramah buat tampilan.
+    // Ubah status upload jadi.
     private function displayUploadStatus(?string $status): string
     {
         return match ($status) {
@@ -282,7 +282,7 @@ class DashboardController extends Controller
         };
     }
 
-    // Format waktu ke zona WIB agar konsisten di dashboard.
+    // Format waktu ke zona WIB.
     private function formatDateTime($dateTime): string
     {
         return $dateTime

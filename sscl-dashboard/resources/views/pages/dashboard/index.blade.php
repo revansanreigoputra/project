@@ -70,7 +70,7 @@
   @endphp
 
   <div
-    class="space-y-6"
+    class="space-y-4 md:space-y-6"
     {{-- State Alpine untuk modal detail kartu dan pagination aktivitas terbaru. --}}
     x-data="{
       detailOpen: false,
@@ -95,8 +95,8 @@
       }
     }"
   >
-    <section class="overflow-hidden rounded-3xl border border-app bg-surface shadow-soft">
-      <div class="relative p-6 md:p-7">
+    <section class="overflow-hidden rounded-2xl border border-app bg-surface shadow-soft md:rounded-3xl">
+      <div class="relative p-4 md:p-7">
         <div class="absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,var(--primary),var(--accent),var(--info),var(--warning))]"></div>
         <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div class="max-w-3xl">
@@ -104,13 +104,13 @@
               <x-lucide-database class="h-3.5 w-3.5" />
               {{ $scopeLabel ?? 'Seluruh sistem' }}
             </div>
-            <h1 class="mt-4 text-2xl font-semibold leading-tight md:text-3xl">Ringkasan Data Sistem</h1>
-            <p class="mt-2 text-sm leading-6 text-muted">
+            <h1 class="mt-3 text-xl font-semibold leading-tight md:mt-4 md:text-3xl">Ringkasan Data Sistem</h1>
+            <p class="mt-2 text-xs leading-5 text-muted md:text-sm md:leading-6">
               Statistik ini merangkum seluruh data yang tersimpan: upload, deteksi selesai, komposisi malware/non-malware, pengguna, serta aktivitas terbaru.
             </p>
           </div>
 
-          <div class="grid min-w-64 gap-3 rounded-3xl border border-app bg-surface2 p-4 text-sm">
+          <div class="grid w-full gap-3 rounded-2xl border border-app bg-surface2 p-3 text-xs md:min-w-64 md:p-4 md:text-sm lg:w-auto lg:rounded-3xl">
             <div class="flex items-center justify-between gap-4">
               <span class="text-muted">Unknown</span>
               <span class="font-semibold">{{ $formatNumber($stats['unknown_rows']) }}</span>
@@ -124,17 +124,17 @@
       </div>
     </section>
 
-    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <section class="grid grid-cols-2 gap-3 sm:grid-cols-2 md:gap-4 xl:grid-cols-5">
       @foreach ($cards as $card)
         <button
           type="button"
           @click="openDetail(@js($dashboardDetails[$card['detail']] ?? []))"
-          class="group rounded-3xl border border-app bg-surface p-5 text-left shadow-soft transition-transform duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 ring-app"
+          class="group rounded-2xl border border-app bg-surface p-4 text-left shadow-soft transition-transform duration-200 hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 ring-app md:rounded-3xl md:p-5"
         >
           <div class="flex items-start justify-between gap-4">
             <div
               @class([
-                'grid h-12 w-12 shrink-0 place-items-center rounded-2xl',
+                'grid h-10 w-10 shrink-0 place-items-center rounded-2xl md:h-12 md:w-12',
                 'bg-primary-soft text-primary' => $card['tone'] === 'primary',
                 'bg-[rgba(248,113,113,0.15)] text-[color:var(--danger)]' => $card['tone'] === 'danger',
                 'bg-[rgba(34,197,94,0.15)] text-[color:var(--accent)]' => $card['tone'] === 'accent',
@@ -142,22 +142,22 @@
                 'bg-[rgba(251,191,36,0.18)] text-[color:var(--warning)]' => $card['tone'] === 'warning',
               ])
             >
-              <x-dynamic-component :component="$card['icon']" class="h-6 w-6 transition-transform duration-200 group-hover:scale-110" />
+              <x-dynamic-component :component="$card['icon']" class="h-5 w-5 transition-transform duration-200 group-hover:scale-110 md:h-6 md:w-6" />
             </div>
-            <x-lucide-mouse-pointer-click class="h-4 w-4 text-muted opacity-70" />
+            <x-lucide-mouse-pointer-click class="hidden h-4 w-4 text-muted opacity-70 sm:block" />
           </div>
 
-          <div class="mt-5">
+          <div class="mt-4 md:mt-5">
             <div class="text-xs font-semibold text-muted">{{ $card['label'] }}</div>
-            <div class="mt-1 break-words text-2xl font-semibold leading-tight">{{ $card['value'] }}</div>
-            <div class="mt-2 text-xs leading-5 text-muted">{{ $card['meta'] }}</div>
+            <div class="mt-1 break-words text-lg font-semibold leading-tight sm:text-xl md:text-2xl">{{ $card['value'] }}</div>
+            <div class="mt-2 line-clamp-2 text-[11px] leading-4 text-muted md:text-xs md:leading-5">{{ $card['meta'] }}</div>
           </div>
         </button>
       @endforeach
     </section>
 
     <section class="grid gap-6 xl:grid-cols-12">
-      <div class="rounded-3xl border border-app bg-surface p-6 shadow-soft xl:col-span-8">
+      <div class="rounded-2xl border border-app bg-surface p-4 shadow-soft md:rounded-3xl md:p-6 xl:col-span-8">
         <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <div class="text-sm font-semibold">Grafik Statistik Deteksi</div>
@@ -169,37 +169,39 @@
           </div>
         </div>
 
-        <div class="mt-7 flex h-72 items-end gap-3 overflow-x-auto border-b border-app pb-4 md:gap-5">
-          @forelse ($trend as $month)
-            @php
-              // Hitung tinggi bar tren dan komposisi normal/malware per bulan.
-              $height = max(8, round(((int) $month['total'] / $maxTrend) * 100));
-              $normalHeight = (int) $month['total'] > 0 ? round(((int) $month['normal'] / (int) $month['total']) * 100) : 0;
-              $malwareHeight = (int) $month['total'] > 0 ? round(((int) $month['malware'] / (int) $month['total']) * 100) : 0;
-            @endphp
-            <div class="flex min-w-16 flex-1 flex-col items-center gap-3">
-              <div class="text-xs font-semibold text-muted">{{ $formatNumber($month['total']) }}</div>
-              <div class="flex h-52 w-full max-w-20 items-end overflow-hidden rounded-t-2xl bg-surface2">
-                <div class="flex w-full flex-col justify-end overflow-hidden rounded-t-2xl" style="height: {{ $height }}%">
-                  <div class="w-full bg-[color:var(--danger)]" style="height: {{ $malwareHeight }}%"></div>
-                  <div class="w-full bg-[color:var(--accent)]" style="height: {{ max(0, 100 - $malwareHeight) }}%"></div>
+        <div class="mt-5 overflow-x-auto border-b border-app pb-4 md:mt-7">
+          <div class="flex h-64 min-w-[420px] items-end gap-3 md:h-72 md:min-w-0 md:gap-5">
+            @forelse ($trend as $month)
+              @php
+                // Hitung tinggi bar tren dan komposisi normal/malware per bulan.
+                $height = max(10, round(((int) $month['total'] / $maxTrend) * 100));
+                $normalHeight = (int) $month['total'] > 0 ? round(((int) $month['normal'] / (int) $month['total']) * 100) : 0;
+                $malwareHeight = (int) $month['total'] > 0 ? round(((int) $month['malware'] / (int) $month['total']) * 100) : 0;
+              @endphp
+              <div class="flex min-w-14 flex-1 flex-col items-center gap-3 md:min-w-16">
+                <div class="max-w-20 truncate text-xs font-semibold text-muted">{{ $formatNumber($month['total']) }}</div>
+                <div class="flex h-44 w-full max-w-16 items-end overflow-hidden rounded-t-2xl bg-surface2 md:h-52 md:max-w-20">
+                  <div class="flex w-full flex-col justify-end overflow-hidden rounded-t-2xl" style="height: {{ $height }}%">
+                    <div class="w-full bg-[color:var(--danger)]" style="height: {{ $malwareHeight }}%"></div>
+                    <div class="w-full bg-[color:var(--accent)]" style="height: {{ max(0, 100 - $malwareHeight) }}%"></div>
+                  </div>
+                </div>
+                <div class="text-xs font-medium text-muted">{{ $month['label'] }}</div>
+              </div>
+            @empty
+              <div class="grid min-h-52 w-full place-items-center rounded-3xl border border-dashed border-app bg-surface2 px-6 text-center">
+                <div>
+                  <x-lucide-chart-column class="mx-auto h-10 w-10 text-muted" />
+                  <div class="mt-3 text-sm font-semibold">Belum ada statistik</div>
+                  <div class="mt-1 text-xs text-muted">Grafik akan muncul setelah deteksi selesai tersimpan.</div>
                 </div>
               </div>
-              <div class="text-xs font-medium text-muted">{{ $month['label'] }}</div>
-            </div>
-          @empty
-            <div class="grid min-h-52 w-full place-items-center rounded-3xl border border-dashed border-app bg-surface2 px-6 text-center">
-              <div>
-                <x-lucide-chart-column class="mx-auto h-10 w-10 text-muted" />
-                <div class="mt-3 text-sm font-semibold">Belum ada statistik</div>
-                <div class="mt-1 text-xs text-muted">Grafik akan muncul setelah deteksi selesai tersimpan.</div>
-              </div>
-            </div>
-          @endforelse
+            @endforelse
+          </div>
         </div>
       </div>
 
-      <div class="rounded-3xl border border-app bg-surface p-6 shadow-soft xl:col-span-4">
+      <div class="rounded-2xl border border-app bg-surface p-4 shadow-soft md:rounded-3xl md:p-6 xl:col-span-4">
         <div class="flex items-center justify-between gap-3">
           <div>
             <div class="text-sm font-semibold">Distribusi Label</div>
@@ -259,7 +261,7 @@
     </section>
 
     <section class="grid gap-6 xl:grid-cols-12">
-      <div class="rounded-3xl border border-app bg-surface p-6 shadow-soft xl:col-span-8">
+      <div class="rounded-2xl border border-app bg-surface p-4 shadow-soft md:rounded-3xl md:p-6 xl:col-span-8">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div class="text-sm font-semibold">Deteksi Terbaru</div>
@@ -290,7 +292,7 @@
             <button
               type="button"
               @click="openDetail(@js($detailPayload))"
-              class="w-full rounded-2xl border border-app bg-surface2 px-4 py-3 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 ring-app"
+            class="w-full rounded-2xl border border-app bg-surface2 px-3 py-3 text-left transition-colors hover:bg-surface focus-visible:outline-none focus-visible:ring-2 ring-app md:px-4"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
@@ -398,7 +400,7 @@
         </div>
       </div>
 
-      <div class="rounded-3xl border border-app bg-surface p-6 shadow-soft xl:col-span-4">
+      <div class="rounded-2xl border border-app bg-surface p-4 shadow-soft md:rounded-3xl md:p-6 xl:col-span-4">
         <div class="flex items-center justify-between gap-3">
           <div>
             <div class="text-sm font-semibold">Aktivitas Terbaru</div>
